@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Transccema — Controle Diesel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EEF2F7;--surf:#fff;--s2:#F8FAFC;--bor:#DDE4EE;
+  --nav:#162040;--navt:rgba(255,255,255,.07);--nava:rgba(232,123,16,.15);
+  --acc:#E07B10;--acc2:#F59E0B;--accl:#FEF3C7;
+  --grn:#059669;--gnl:#D1FAE5;--red:#DC2626;--rdl:#FEE2E2;--blu:#0284C7;--bll:#DBEAFE;
+  --tx:#0F1D2E;--tx2:#4A5F7A;--tx3:#94A3B8;
+  --sh:0 2px 12px rgba(15,29,46,.08);--sh2:0 8px 32px rgba(15,29,46,.14);
+}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tx);overflow:hidden}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bor);border-radius:4px}
+#app{display:flex;height:100vh}
+/* SIDEBAR */
+#sb{width:230px;flex-shrink:0;background:var(--nav);display:flex;flex-direction:column;box-shadow:3px 0 16px rgba(0,0,0,.2)}
+#logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-row{display:flex;align-items:center;gap:10px}
+.logo-ic{width:36px;height:36px;background:linear-gradient(135deg,var(--acc),var(--acc2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-name{font-size:14px;font-weight:800;color:#fff}.logo-sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+#menu{flex:1;padding:10px 8px;overflow-y:auto}
+.mi{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px}
+.mi:hover{color:rgba(255,255,255,.85);background:var(--navt)}.mi.on{color:#fff;background:var(--nava);font-weight:600}.mi.on .mi-ic{color:var(--acc2)}
+.mi-ic{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+#sb-bot{padding:12px 8px;border-top:1px solid rgba(255,255,255,.08)}
+.sb-stat{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;font-size:11px;color:rgba(255,255,255,.5)}
+.sb-stat strong{color:#fff;font-size:18px;display:block;font-family:'JetBrains Mono',monospace}
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:58px;background:var(--surf);border-bottom:1px solid var(--bor);display:flex;align-items:center;padding:0 28px;gap:16px;flex-shrink:0;box-shadow:var(--sh)}
+#page-title{font-size:20px;font-weight:700;flex:1}
+.topbar-badge{font-size:11px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+#sync-btn{display:flex;align-items:center;gap:7px;padding:8px 16px;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+#sync-btn:hover{opacity:.88}#sync-btn:disabled{opacity:.5;cursor:not-allowed}
+#content{flex:1;overflow-y:auto;padding:24px}
+.sec{display:none}.sec.on{display:block}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi{background:var(--surf);border-radius:12px;padding:18px 20px;box-shadow:var(--sh);position:relative;overflow:hidden;border:1px solid var(--bor)}
+.kpi-label{font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.kpi-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--tx);line-height:1}
+.kpi-sub{font-size:12px;color:var(--tx3);margin-top:5px}
+.kpi-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--acc);border-radius:0 3px 0 0;transition:width 1s ease}
+.kpi.green .kpi-bar{background:var(--grn)}.kpi.blue .kpi-bar{background:var(--blu)}.kpi.red .kpi-bar{background:var(--red)}
+.kpi-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:32px;opacity:.12}
+/* CARDS */
+.card{background:var(--surf);border-radius:12px;padding:20px;box-shadow:var(--sh);border:1px solid var(--bor);margin-bottom:20px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title span{font-size:12px;color:var(--tx3);font-weight:400;margin-left:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* TABELA */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--bor)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:10px 14px;background:var(--s2);font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap;border-bottom:1px solid var(--bor)}
+td{padding:10px 14px;border-bottom:1px solid var(--bor);color:var(--tx);vertical-align:middle}
+tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-xml{background:var(--bll);color:var(--blu)}.badge-cta{background:var(--gnl);color:var(--grn)}.badge-wpp{background:var(--accl);color:var(--acc)}
+/* FILTROS */
+.filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:flex-end}
+.filters label{font-size:12px;color:var(--tx2);font-weight:500;display:block;margin-bottom:4px}
+.filters select,.filters input{padding:8px 12px;border:1px solid var(--bor);border-radius:8px;font-family:inherit;font-size:13px;color:var(--tx);background:var(--surf);outline:none}
+.filters select:focus,.filters input:focus{border-color:var(--acc)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.btn:hover{opacity:.85}.btn-p{background:var(--acc);color:#fff}.btn-g{background:var(--s2);color:var(--tx2);border:1px solid var(--bor)}.btn-red{background:var(--red);color:#fff}
+/* VIAGEM */
+.viagem-card{background:var(--surf);border:1px solid var(--bor);border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:var(--sh)}
+.viagem-header{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--s2);border-bottom:1px solid var(--bor);cursor:pointer}
+.viagem-num{background:var(--nav);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.viagem-periodo{font-size:13px;font-weight:600}.viagem-stats{display:flex;gap:20px;margin-left:auto}
+.vs{text-align:right}.vs-val{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace}.vs-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em}
+.viagem-fuel{height:4px;background:var(--bor)}.viagem-fuel-fill{height:4px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width 1.2s ease}
+.viagem-body{padding:0}.viagem-body table{font-size:12.5px}
+.viagem-total td{background:var(--accl);font-weight:700;color:var(--acc)}
+.chevron{font-size:12px;color:var(--tx3);transition:transform .2s;margin-left:8px}
+.viagem-card.open .chevron{transform:rotate(180deg)}.viagem-card:not(.open) .viagem-body{display:none}
+/* POSTOS */
+.posto-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--bor)}
+.posto-row:last-child{border-bottom:none}
+.posto-rank{font-size:11px;font-weight:700;color:var(--tx3);width:20px;text-align:center;font-family:'JetBrains Mono',monospace}
+.posto-name{font-size:13px;font-weight:600;flex:1}.posto-city{font-size:11px;color:var(--tx3)}
+.posto-bar-wrap{width:140px;background:var(--bor);border-radius:4px;height:6px;overflow:hidden}
+.posto-bar{height:6px;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px;transition:width 1s ease}
+.posto-val{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:right;min-width:80px}
+.posto-sub{font-size:11px;color:var(--tx3);text-align:right;min-width:60px}
+/* RELATÓRIO */
+.rpt-controls{display:flex;gap:12px;margin-bottom:24px;align-items:flex-end;flex-wrap:wrap}
+.rpt-field{display:flex;flex-direction:column;gap:5px}
+.rpt-field label{font-size:12px;font-weight:600;color:var(--tx2)}
+.rpt-field select,.rpt-field input{padding:9px 14px;border:1px solid var(--bor);border-radius:8px;font-size:13px;font-family:inherit;color:var(--tx);background:var(--surf);outline:none}
+#rpt-output{background:var(--surf);border:1px solid var(--bor);border-radius:12px;padding:28px 32px;box-shadow:var(--sh)}
+.print-btn{background:var(--nav);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px}
+@media print{#sb,#topbar,.rpt-controls,.print-btn{display:none!important}#content{padding:0!important;overflow:visible!important}}
+/* MISC */
+.empty{text-align:center;padding:48px 24px;color:var(--tx3)}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}.empty-msg{font-size:14px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.comp-table th:first-child,.comp-table td:first-child{position:sticky;left:0;background:var(--surf);z-index:1}
+.comp-table th:first-child{background:var(--s2)}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--nav);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--sh2);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateY(0)}#toast.ok{background:var(--grn)}#toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="sb">
+  <div id="logo">
+    <div class="logo-row">
+      <div class="logo-ic">⛽</div>
+      <div><div class="logo-name">TRANSCCEMA</div><div class="logo-sub">Controle Diesel</div></div>
+    </div>
+  </div>
+  <nav id="menu">
+    <div class="mi on" onclick="go('visao',this)"><span class="mi-ic">📊</span> Visão Geral</div>
+    <div class="mi" onclick="go('placa',this)"><span class="mi-ic">🚛</span> Por Placa</div>
+    <div class="mi" onclick="go('comp',this)"><span class="mi-ic">⚖️</span> Comparativo</div>
+    <div class="mi" onclick="go('postos',this)"><span class="mi-ic">📍</span> Postos</div>
+    <div class="mi" onclick="go('rpt',this)"><span class="mi-ic">📄</span> Relatório</div>
+    <div class="mi" onclick="go('cfg',this)"><span class="mi-ic">⚙️</span> Ajustes</div>
+  </nav>
+  <div id="sb-bot"><div class="sb-stat"><strong id="sb-total">—</strong>notas no banco</div></div>
+</div>
+<div id="main">
+  <div id="topbar">
+    <div id="page-title">Visão Geral</div>
+    <span class="topbar-badge" id="last-sync">—</span>
+    <button id="sync-btn" onclick="sincronizar()">🔄 Sincronizar</button>
+  </div>
+  <div id="content">
+
+    <!-- VISÃO GERAL -->
+    <div id="sec-visao" class="sec on">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Litros este mês</div><div class="kpi-val" id="kv-litros">—</div><div class="kpi-sub" id="ks-litros">—</div><span class="kpi-icon">⛽</span><div class="kpi-bar" id="kb-litros" style="width:0"></div></div>
+        <div class="kpi green"><div class="kpi-label">Valor este mês</div><div class="kpi-val" id="kv-valor">—</div><div class="kpi-sub" id="ks-valor">—</div><span class="kpi-icon">💰</span><div class="kpi-bar" id="kb-valor" style="width:0"></div></div>
+        <div class="kpi blue"><div class="kpi-label">Média frota (mês)</div><div class="kpi-val" id="kv-km">—</div><div class="kpi-sub" id="ks-km">km/L</div><span class="kpi-icon">📏</span><div class="kpi-bar" id="kb-km" style="width:0"></div></div>
+        <div class="kpi red"><div class="kpi-label">Preço médio/L</div><div class="kpi-val" id="kv-preco">—</div><div class="kpi-sub" id="ks-preco">este mês</div><span class="kpi-icon">📈</span><div class="kpi-bar" id="kb-preco" style="width:0"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="card-title">📅 Consumo diário — 30 dias</div><canvas id="chart-diario" height="180"></canvas></div>
+        <div class="card"><div class="card-title">🏭 Top postos — mês atual</div><canvas id="chart-postos" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🕐 Últimas notas <span id="notas-count"></span></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Placa</th><th>Posto</th><th>Litros</th><th>Valor</th><th>Preço/L</th><th>Origem</th></tr></thead><tbody id="tb-notas"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- POR PLACA -->
+    <div id="sec-placa" class="sec">
+      <div class="filters">
+        <div><label>Placa</label><select id="sel-placa" onchange="renderPlaca()"><option value="">Selecione...</option></select></div>
+        <div><label>Período</label><select id="sel-placa-per" onchange="renderPlaca()"><option value="90">90 dias</option><option value="60">60 dias</option><option value="30">30 dias</option><option value="0">Todos</option></select></div>
+      </div>
+      <div id="placa-output"><div class="empty"><div class="empty-icon">🚛</div><div class="empty-msg">Selecione uma placa</div></div></div>
+    </div>
+
+    <!-- COMPARATIVO -->
+    <div id="sec-comp" class="sec">
+      <div class="filters">
+        <div><label>Período</label><select id="sel-comp-per" onchange="renderComp()"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="0">Todos</option></select></div>
+        <div><label>Ordenar</label><select id="sel-comp-ord" onchange="renderComp()"><option value="litros">Mais litros</option><option value="valor">Maior valor</option><option value="media_d">Melhor média</option><option value="media_a">Pior média</option><option value="placa">Placa A→Z</option></select></div>
+      </div>
+      <div class="card"><div class="card-title">⚖️ Comparativo por placa</div>
+        <div class="tbl-wrap"><table class="comp-table"><thead><tr><th>Placa</th><th>Registros</th><th>Litros</th><th>Valor</th><th>Preço/L</th><th>Média km/L</th><th>Origem</th></tr></thead><tbody id="tb-comp"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- POSTOS -->
+    <div id="sec-postos" class="sec">
+      <div class="filters"><div><label>Período</label><select id="sel-postos-per" onchange="renderPostos()"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="0">Todos</option></select></div></div>
+      <div class="card"><div class="card-title">📍 Ranking de postos</div><div id="postos-list"></div></div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="sec-rpt" class="sec">
+      <div class="rpt-controls">
+        <div class="rpt-field"><label>Placa</label><select id="rpt-placa"><option value="">Todas</option></select></div>
+        <div class="rpt-field"><label>Mês</label><select id="rpt-mes" onchange="aplicarMes()"><option value="">— personalizado —</option></select></div>
+        <div class="rpt-field"><label>De</label><input type="date" id="rpt-ini"></div>
+        <div class="rpt-field"><label>Até</label><input type="date" id="rpt-fim"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button class="btn btn-p" onclick="gerarRpt()">📄 Gerar</button>
+          <button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <div id="rpt-output"><div class="empty"><div class="empty-icon">📄</div><div class="empty-msg">Configure os filtros e clique em Gerar</div></div></div>
+    </div>
+
+    <!-- AJUSTES -->
+    <div id="sec-cfg" class="sec">
+      <div class="card">
+        <div class="card-title">🔗 URL do Apps Script</div>
+        <input type="text" id="cfg-url" style="width:100%;padding:9px 12px;border:1px solid var(--bor);border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:12px">
+        <div style="display:flex;gap:10px"><button class="btn btn-p" onclick="salvarURL()">💾 Salvar</button><button class="btn btn-g" onclick="sincronizar()">🔄 Testar</button></div>
+      </div>
+      <div class="card"><div class="card-title">🚛 Placas na base</div><div id="placas-gestao"></div></div>
+      <div class="card"><div class="card-title">🗑️ Manutenção</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-g" onclick="exportarJSON()">📥 Exportar JSON</button>
+          <button class="btn btn-red" onclick="confirmarLimpar()">⚠️ Apagar dados locais</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────
+const APPS_URL_KEY = 'tc_diesel_url';
+const NOTAS_KEY    = 'tc_diesel_notas';
+const DEFAULT_URL  = 'https://script.google.com/macros/s/AKfycbwuKDrRPDP5kJbp5lnXptgJ20uNVc2Oci3LCZsGi4q976p1ZBP4ypPF5zCsEtjlxC_fng/exec';
+
+let NOTAS = [];
+let chartD = null, chartP = null;
+
+// ── INIT ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('cfg-url').value = getURL();
+  var saved = localStorage.getItem(NOTAS_KEY);
+  if (saved) { try { NOTAS = JSON.parse(saved); } catch(e) {} }
+  var hoje = new Date(), ini = new Date(hoje);
+  ini.setDate(ini.getDate() - 30);
+  document.getElementById('rpt-ini').value = ini.toISOString().slice(0,10);
+  document.getElementById('rpt-fim').value = hoje.toISOString().slice(0,10);
+  renderAll();
+  sincronizar();
+});
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function getURL() { return localStorage.getItem(APPS_URL_KEY) || DEFAULT_URL; }
+function salvarURL() {
+  var u = document.getElementById('cfg-url').value.trim();
+  if (!u) { toast('URL inválida','err'); return; }
+  localStorage.setItem(APPS_URL_KEY, u);
+  toast('Salvo! Sincronizando...','ok');
+  sincronizar();
+}
+function brl(v) { return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function brn(v,d) { d=d||2; return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function ptDate(s) {
+  if (!s) return null;
+  if (s instanceof Date) return s;
+  var str = String(s).trim();
+  var m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3],+m[2]-1,+m[1]);
+  var m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m2) return new Date(+m2[1],+m2[2]-1,+m2[3]);
+  return null;
+}
+function inPer(d, dias) {
+  var dt = ptDate(d); if (!dt) return false;
+  if (!dias) return true;
+  return dt >= new Date(Date.now() - dias*86400000);
+}
+function fmtDate(s) { var d = ptDate(s); return d ? d.toLocaleDateString('pt-BR') : (s||''); }
+function mesStr(d) { return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()]+'/'+d.getFullYear(); }
+
+// ── NAV ──────────────────────────────────────────────────────────
+var TITLES = {visao:'Visão Geral',placa:'Por Placa',comp:'Comparativo',postos:'Postos',rpt:'Relatório',cfg:'Ajustes'};
+function go(sec, el) {
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.mi').forEach(function(m){m.classList.remove('on');});
+  document.getElementById('sec-'+sec).classList.add('on');
+  el.classList.add('on');
+  document.getElementById('page-title').textContent = TITLES[sec];
+  if (sec==='cfg') renderCfgPlacas();
+  if (sec==='comp') renderComp();
+  if (sec==='postos') renderPostos();
+}
+
+// ── SINCRONIZAR ───────────────────────────────────────────────────
+function sincronizar() {
+  var btn = document.getElementById('sync-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sincronizando...';
+  var url = getURL();
+  var jsonUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'json=1';
+  fetch(jsonUrl, {redirect:'follow'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var novas = Array.isArray(data) ? data : (data.diesel || []);
+      var map = {};
+      NOTAS.forEach(function(n) { if(n.chave) map[n.chave] = n; });
+      novas.forEach(function(n) { if(n.chave) map[n.chave] = n; });
+      NOTAS = Object.values(map).filter(function(n){return n.chave;});
+      localStorage.setItem(NOTAS_KEY, JSON.stringify(NOTAS));
+      var agora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('last-sync').textContent = 'Sync: ' + agora;
+      toast(NOTAS.length + ' notas carregadas','ok');
+      renderAll();
+    })
+    .catch(function(e) { toast('Erro: ' + e.message,'err'); })
+    .finally(function() { btn.disabled=false; btn.innerHTML='🔄 Sincronizar'; });
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────
+function renderAll() {
+  populateSelects();
+  popularMeses();
+  renderVisao();
+  document.getElementById('sb-total').textContent = NOTAS.length.toLocaleString('pt-BR');
+}
+
+function populateSelects() {
+  var placas = [...new Set(NOTAS.map(function(n){return n.placa;}).filter(Boolean))].sort();
+  ['sel-placa','rpt-placa'].forEach(function(id) {
+    var el = document.getElementById(id);
+    var cur = el.value;
+    var extra = id==='rpt-placa' ? '<option value="">Todas</option>' : '<option value="">Selecione...</option>';
+    el.innerHTML = extra + placas.map(function(p){
+      return '<option value="'+p+'"'+(p===cur?' selected':'')+'>'+p+'</option>';
+    }).join('');
+  });
+}
+
+// ── VISÃO GERAL ───────────────────────────────────────────────────
+function renderVisao() {
+  var hoje = new Date();
+  var mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  var mesFim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+  var mes30  = new Date(Date.now() - 30*86400000);
+  var mesDiesel = NOTAS.filter(function(n) {
+    var d = ptDate(n.data); return d && d>=mesIni && d<=mesFim && n.origem!=='arla';
+  });
+  var totL = mesDiesel.reduce(function(a,n){return a+Number(n.litros||0);},0);
+  var totV = mesDiesel.reduce(function(a,n){return a+Number(n.valor||0);},0);
+  var preco = totL>0 ? totV/totL : 0;
+  var comM  = mesDiesel.filter(function(n){return n.media_kml && Number(n.media_kml)>0;});
+  var media = comM.length>0 ? comM.reduce(function(a,n){return a+Number(n.media_kml);},0)/comM.length : 0;
+  document.getElementById('kv-litros').textContent = brn(totL,0)+' L';
+  document.getElementById('ks-litros').textContent = mesDiesel.length+' abastecimentos';
+  document.getElementById('kv-valor').textContent  = brl(totV);
+  document.getElementById('ks-valor').textContent  = preco>0?'R$ '+brn(preco,3)+'/L':'—';
+  document.getElementById('kv-km').textContent     = media>0?brn(media,2)+' km/L':'—';
+  document.getElementById('ks-km').textContent     = comM.length+' registros CTA';
+  document.getElementById('kv-preco').textContent  = preco>0?'R$ '+brn(preco,3):'—';
+  document.getElementById('ks-preco').textContent  = 'por litro — mês atual';
+  setTimeout(function(){
+    document.getElementById('kb-litros').style.width = Math.min(totL/5000*85,85)+'%';
+    document.getElementById('kb-valor').style.width  = Math.min(totV/50000*85,85)+'%';
+    document.getElementById('kb-km').style.width     = Math.min(media/5*85,85)+'%';
+    document.getElementById('kb-preco').style.width  = Math.min(preco/10*85,85)+'%';
+  },100);
+  // Últimas notas
+  var ultimas = [...NOTAS].sort(function(a,b){return (ptDate(b.data)||0)-(ptDate(a.data)||0);}).slice(0,20);
+  document.getElementById('notas-count').textContent = NOTAS.length+' total';
+  document.getElementById('tb-notas').innerHTML = ultimas.map(function(n){
+    var l=Number(n.litros||0), v=Number(n.valor||0), pl=l>0&&v>0?v/l:0;
+    var o=n.origem||''; var badge=o==='xml'?'badge-xml':o==='cta'?'badge-cta':'badge-wpp';
+    var orig=o==='xml'?'NF-e':o==='cta'?'CTA':o==='wpp'?'WPP':'Manual';
+    return '<tr><td class="mono">'+fmtDate(n.data)+'</td><td><strong>'+(n.placa||'—')+'</strong></td>'
+          +'<td>'+(n.posto||'—')+'</td><td class="mono">'+brn(l,2)+' L</td>'
+          +'<td class="mono">'+brl(v)+'</td><td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
+          +'<td><span class="badge '+badge+'">'+orig+'</span></td></tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">Nenhum registro</td></tr>';
+  renderChartDiario();
+  renderChartPostos(mesDiesel);
+}
+
+function renderChartDiario() {
+  var dias = [], hoje = new Date();
+  for (var i=29;i>=0;i--) { var d=new Date(hoje); d.setDate(d.getDate()-i); dias.push(d); }
+  var labels = dias.map(function(d){return d.getDate()+'/'+(d.getMonth()+1);});
+  var data = dias.map(function(d){
+    var ds = d.toISOString().slice(0,10);
+    return NOTAS.filter(function(n){var nd=ptDate(n.data);return nd&&nd.toISOString().slice(0,10)===ds;})
+               .reduce(function(a,n){return a+Number(n.litros||0);},0);
+  });
+  if (chartD) chartD.destroy();
+  chartD = new Chart(document.getElementById('chart-diario'),{
+    type:'bar',
+    data:{labels:labels,datasets:[{label:'Litros',data:data,backgroundColor:'rgba(224,123,16,.75)',borderRadius:4,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:9},maxTicksLimit:10}}}}
+  });
+}
+
+function renderChartPostos(mesDiesel) {
+  var map = {};
+  mesDiesel.forEach(function(n){var p=n.posto||'Desconhecido';map[p]=(map[p]||0)+Number(n.litros||0);});
+  var sorted = Object.entries(map).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+  if (chartP) chartP.destroy();
+  chartP = new Chart(document.getElementById('chart-postos'),{
+    type:'doughnut',
+    data:{labels:sorted.map(function(x){return x[0].length>20?x[0].slice(0,20)+'…':x[0];}),
+          datasets:[{data:sorted.map(function(x){return x[1];}),backgroundColor:['#E07B10','#F59E0B','#059669','#0284C7','#7C3AED','#DC2626'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:14,padding:10}}}}
+  });
+}
+
+// ── POR PLACA ─────────────────────────────────────────────────────
+function renderPlaca() {
+  var placa = document.getElementById('sel-placa').value;
+  var dias  = parseInt(document.getElementById('sel-placa-per').value)||0;
+  var out   = document.getElementById('placa-output');
+  if (!placa) { out.innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-msg">Selecione uma placa</div></div>'; return; }
+  var notas = NOTAS.filter(function(n){return n.placa===placa;});
+  if (dias) notas = notas.filter(function(n){return inPer(n.data,dias);});
+  notas.sort(function(a,b){return (ptDate(a.data)||0)-(ptDate(b.data)||0);});
+  if (!notas.length) { out.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-msg">Nenhum registro</div></div>'; return; }
+  var viagens = calcViagens(notas);
+  var html = '';
+  if (viagens.length) {
+    viagens.forEach(function(v,i){
+      var tl=v.abasts.reduce(function(a,x){return a+x.litros;},0);
+      var tv=v.abasts.reduce(function(a,x){return a+x.valor;},0);
+      var media=v.km&&tl>0?v.km/tl:0;
+      var pct=Math.min((v.km||0)/8000*100,100);
+      html+='<div class="viagem-card open">'
+        +'<div class="viagem-header" onclick="this.parentElement.classList.toggle(\'open\')">'
+        +'<div class="viagem-num">V'+(i+1)+'</div>'
+        +'<div><div class="viagem-periodo">'+fmtDate(v.ini)+' → '+fmtDate(v.fim)+'</div>'
+        +'<div style="font-size:11px;color:var(--tx3);margin-top:2px">'+(v.km?brn(v.km,0)+' km':'Sem odômetro')+'</div></div>'
+        +'<div class="viagem-stats">'
+        +'<div class="vs"><div class="vs-val">'+brn(tl,0)+' L</div><div class="vs-lbl">Diesel</div></div>'
+        +'<div class="vs"><div class="vs-val">'+(media?brn(media,2):'—')+'</div><div class="vs-lbl">km/L</div></div>'
+        +'<div class="vs"><div class="vs-val">'+brl(tv)+'</div><div class="vs-lbl">Valor</div></div>'
+        +'</div><span class="chevron">▼</span></div>'
+        +'<div class="viagem-fuel"><div class="viagem-fuel-fill" style="width:'+pct+'%"></div></div>'
+        +'<div class="viagem-body"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>Preço/L</th><th>Origem</th></tr></thead><tbody>'
+        +v.abasts.map(function(a){
+          var pl=a.valor>0&&a.litros>0?a.valor/a.litros:0;
+          var o=a.origem||''; var badge=o==='xml'?'badge-xml':o==='cta'?'badge-cta':'badge-wpp';
+          var orig=o==='xml'?'NF-e':o==='cta'?'CTA':'WPP';
+          return '<tr'+(a.abre?' style="color:var(--tx3)"':'')+'>'+
+            '<td class="mono">'+fmtDate(a.data)+'</td>'+
+            '<td>'+a.posto+(a.abre?' <span style="font-size:10px">(abre ciclo)</span>':'')+'</td>'+
+            '<td class="mono">'+brn(a.litros,2)+' L</td>'+
+            '<td class="mono">'+brl(a.valor)+'</td>'+
+            '<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'+
+            '<td><span class="badge '+badge+'">'+orig+'</span></td></tr>';
+        }).join('')
+        +'</tbody><tfoot><tr class="viagem-total"><td colspan="2"><strong>Total</strong></td>'
+        +'<td class="mono"><strong>'+brn(tl,2)+' L</strong></td>'
+        +'<td class="mono"><strong>'+brl(tv)+'</strong></td>'
+        +'<td class="mono">'+(tl>0?'R$ '+brn(tv/tl,3):'—')+'</td>'
+        +'<td>'+(media?brn(media,2)+' km/L':'—')+'</td></tr></tfoot></table></div></div>';
+    });
+  } else {
+    var tl=notas.reduce(function(a,n){return a+Number(n.litros||0);},0);
+    var tv=notas.reduce(function(a,n){return a+Number(n.valor||0);},0);
+    html='<div class="card"><div class="card-title">'+notas.length+' abastecimentos (sem CTA)</div>'
+      +'<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>Preço/L</th></tr></thead><tbody>'
+      +notas.map(function(n){var l=Number(n.litros||0),v=Number(n.valor||0),p=l>0&&v>0?v/l:0;
+        return '<tr><td class="mono">'+fmtDate(n.data)+'</td><td>'+(n.posto||'—')+'</td>'
+          +'<td class="mono">'+brn(l,2)+' L</td><td class="mono">'+brl(v)+'</td>'
+          +'<td class="mono">'+(p>0?'R$ '+brn(p,3):'—')+'</td></tr>';}).join('')
+      +'</tbody><tfoot><tr style="background:var(--accl)"><td colspan="2"><strong>Total</strong></td>'
+      +'<td class="mono"><strong>'+brn(tl,2)+' L</strong></td><td class="mono"><strong>'+brl(tv)+'</strong></td>'
+      +'<td class="mono">'+(tl>0?'R$ '+brn(tv/tl,3):'—')+'</td></tr></tfoot></table></div></div>';
+  }
+  out.innerHTML = html;
+}
+
+function calcViagens(notas) {
+  var ctaIdx = notas.reduce(function(a,n,i){if(n.origem==='cta') a.push(i); return a;},[]);
+  if (ctaIdx.length < 2) return [];
+  var viagens = [];
+  for (var c=0; c<ctaIdx.length-1; c++) {
+    var iIni=ctaIdx[c], iFim=ctaIdx[c+1];
+    var ab=notas[iIni], fe=notas[iFim];
+    var km=null, kmF=numKm(fe.km_abast), kmI=numKm(ab.km_abast);
+    if (kmF&&kmI&&kmF>kmI) km=kmF-kmI;
+    else if (fe.km_dist) km=Number(fe.km_dist)||null;
+    var abasts=[Object.assign({},ab,{abre:true,litros:Number(ab.litros||0),valor:Number(ab.valor||0)})];
+    for (var j=iIni+1;j<=iFim;j++) abasts.push(Object.assign({},notas[j],{litros:Number(notas[j].litros||0),valor:Number(notas[j].valor||0)}));
+    viagens.push({ini:ab.data,fim:fe.data,km:km,abasts:abasts});
+  }
+  return viagens;
+}
+
+function numKm(v) {
+  if (!v) return null;
+  var n = Number(String(v).replace(/[^0-9.]/g,''));
+  if (!isNaN(n) && n > 1000) return n;
+  var m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) { var d=new Date(+m[1],+m[2]-1,+m[3]),base=new Date(1900,0,1); return Math.round((d-base)/86400000)+2; }
+  return null;
+}
+
+// ── COMPARATIVO ───────────────────────────────────────────────────
+function renderComp() {
+  var dias = parseInt(document.getElementById('sel-comp-per').value)||0;
+  var ord  = document.getElementById('sel-comp-ord').value;
+  var notas = dias ? NOTAS.filter(function(n){return inPer(n.data,dias);}) : NOTAS;
+  var map = {};
+  notas.forEach(function(n){
+    var p=n.placa||'—';
+    if(!map[p]) map[p]={placa:p,n:0,litros:0,valor:0,origens:{},ms:0,mn:0};
+    map[p].n++; map[p].litros+=Number(n.litros||0); map[p].valor+=Number(n.valor||0);
+    map[p].origens[n.origem]=(map[p].origens[n.origem]||0)+1;
+    if(n.media_kml&&Number(n.media_kml)>0){map[p].ms+=Number(n.media_kml);map[p].mn++;}
+  });
+  var arr = Object.values(map);
+  arr.sort(function(a,b){
+    if(ord==='litros') return b.litros-a.litros;
+    if(ord==='valor')  return b.valor-a.valor;
+    if(ord==='media_d'){var ma=a.mn?a.ms/a.mn:0,mb=b.mn?b.ms/b.mn:0;return mb-ma;}
+    if(ord==='media_a'){var ma=a.mn?a.ms/a.mn:0,mb=b.mn?b.ms/b.mn:0;return ma-mb;}
+    return a.placa.localeCompare(b.placa);
+  });
+  var maxL = Math.max.apply(null,arr.map(function(r){return r.litros;}).concat([1]));
+  document.getElementById('tb-comp').innerHTML = arr.map(function(r){
+    var pl=r.litros>0?r.valor/r.litros:0, med=r.mn?r.ms/r.mn:0, pct=r.litros/maxL*100;
+    var origs=Object.entries(r.origens).map(function(kv){
+      var b=kv[0]==='cta'?'badge-cta':kv[0]==='xml'?'badge-xml':'badge-wpp';
+      return '<span class="badge '+b+'">'+kv[0].toUpperCase()+' '+kv[1]+'</span>';
+    }).join(' ');
+    return '<tr><td><strong>'+r.placa+'</strong></td><td class="mono">'+r.n+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="width:80px;background:var(--bor);border-radius:3px;height:5px;overflow:hidden">'
+      +'<div style="width:'+pct+'%;background:var(--acc);height:5px;border-radius:3px"></div></div>'
+      +'<span class="mono">'+brn(r.litros,0)+' L</span></div></td>'
+      +'<td class="mono">'+brl(r.valor)+'</td>'
+      +'<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
+      +'<td class="mono">'+(med>0?brn(med,2)+' km/L':'—')+'</td>'
+      +'<td>'+origs+'</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">Nenhum dado</td></tr>';
+}
+
+// ── POSTOS ────────────────────────────────────────────────────────
+function renderPostos() {
+  var dias = parseInt(document.getElementById('sel-postos-per').value)||0;
+  var notas = dias ? NOTAS.filter(function(n){return inPer(n.data,dias);}) : NOTAS;
+  var map = {};
+  notas.forEach(function(n){var p=n.posto||'Desconhecido';if(!map[p]) map[p]={nome:p,litros:0,valor:0,n:0};map[p].litros+=Number(n.litros||0);map[p].valor+=Number(n.valor||0);map[p].n++;});
+  var arr = Object.values(map).sort(function(a,b){return b.litros-a.litros;});
+  var maxL = arr.length ? arr[0].litros : 1;
+  document.getElementById('postos-list').innerHTML = arr.map(function(p,i){
+    var pl=p.litros>0?p.valor/p.litros:0, pct=p.litros/maxL*100;
+    return '<div class="posto-row">'
+      +'<div class="posto-rank">'+(i+1)+'</div>'
+      +'<div style="flex:1"><div class="posto-name">'+p.nome+'</div><div class="posto-city">'+p.n+' abastecimentos</div></div>'
+      +'<div class="posto-bar-wrap"><div class="posto-bar" style="width:'+pct+'%"></div></div>'
+      +'<div class="posto-val">'+brn(p.litros,0)+' L</div>'
+      +'<div class="posto-sub">'+(pl>0?'R$ '+brn(pl,3)+'/L':'')+'</div>'
+      +'<div class="posto-sub">'+brl(p.valor)+'</div></div>';
+  }).join('') || '<div class="empty"><div class="empty-msg">Nenhum dado</div></div>';
+}
+
+// ── MÊS / RELATÓRIO ───────────────────────────────────────────────
+function popularMeses() {
+  var sel = document.getElementById('rpt-mes'); if(!sel) return;
+  var meses = new Set();
+  NOTAS.forEach(function(n){var d=ptDate(n.data);if(d) meses.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));});
+  var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var arr=[...meses].sort().reverse(), cur=sel.value;
+  sel.innerHTML='<option value="">— personalizado —</option>'+arr.map(function(k){
+    var ym=k.split('-'); return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+nomes[+ym[1]-1]+' '+ym[0]+'</option>';
+  }).join('');
+}
+function aplicarMes() {
+  var v=document.getElementById('rpt-mes').value; if(!v) return;
+  var ym=v.split('-');
+  document.getElementById('rpt-ini').value=new Date(+ym[0],+ym[1]-1,1).toISOString().slice(0,10);
+  document.getElementById('rpt-fim').value=new Date(+ym[0],+ym[1],0).toISOString().slice(0,10);
+}
+function gerarRpt() {
+  var placa=document.getElementById('rpt-placa').value;
+  var ini=document.getElementById('rpt-ini').value, fim=document.getElementById('rpt-fim').value;
+  var dIni=ini?new Date(ini+'T00:00:00'):null, dFim=fim?new Date(fim+'T23:59:59'):null;
+  var notas=NOTAS.filter(function(n){
+    if(placa&&n.placa!==placa) return false;
+    var d=ptDate(n.data); if(!d) return false;
+    if(dIni&&d<dIni) return false; if(dFim&&d>dFim) return false; return true;
+  });
+  notas.sort(function(a,b){return (ptDate(a.data)||0)-(ptDate(b.data)||0);});
+  if(!notas.length){toast('Nenhum registro','err');return;}
+  var placas=placa?[placa]:[...new Set(notas.map(function(n){return n.placa;}).filter(Boolean))].sort();
+  var thS='padding:7px 10px;background:#f0f0f0;font-size:11px;font-weight:700;border:1px solid #ccc;text-align:left;white-space:nowrap';
+  var tdS='padding:6px 10px;font-size:12px;border:1px solid #ddd', tdR=tdS+';text-align:right';
+  var totR=0,totKm=0,totL=0,totV=0,linhas='';
+  placas.forEach(function(pl){
+    var pN=notas.filter(function(n){return n.placa===pl;});
+    pN.forEach(function(n,i){
+      var kmFim=numKm(n.km_abast), kmIni=i>0?numKm(pN[i-1].km_abast):null;
+      var l=Number(n.litros||0),v=Number(n.valor||0),vu=l>0&&v>0?v/l:0;
+      var kmP=numKm(n.km_dist)||(kmFim&&kmIni&&kmFim>kmIni?kmFim-kmIni:0)||null;
+      var med=kmP&&l>0?kmP/l:(Number(n.media_kml)||0)||null;
+      totR++;totL+=l;totV+=v;if(kmP) totKm+=kmP;
+      linhas+='<tr><td style="'+tdS+'">'+fmtDate(n.data)+'</td><td style="'+tdS+'"><strong>'+pl+'</strong></td>'
+        +'<td style="'+tdS+'">'+(n.posto||'—')+'</td><td style="'+tdS+'">'+(n.nf||'—')+'</td>'
+        +'<td style="'+tdR+'">'+(kmIni?kmIni.toLocaleString('pt-BR'):'—')+'</td>'
+        +'<td style="'+tdR+'">'+(kmFim?kmFim.toLocaleString('pt-BR'):'—')+'</td>'
+        +'<td style="'+tdS+'">DIESEL S10</td>'
+        +'<td style="'+tdR+'">'+(med?brn(med,2):'—')+'</td>'
+        +'<td style="'+tdR+'">'+(vu>0?'R$ '+brn(vu,2):'—')+'</td>'
+        +'<td style="'+tdR+'">'+brn(l,4)+'</td><td style="'+tdR+'">—</td>'
+        +'<td style="'+tdR+'">'+brl(v)+'</td></tr>';
+    });
+  });
+  var mediaG=totKm&&totL?totKm/totL:0;
+  var periodo=(dIni?dIni.toLocaleDateString('pt-BR'):'início')+' a '+(dFim?dFim.toLocaleDateString('pt-BR'):'hoje');
+  document.getElementById('rpt-output').innerHTML=
+    '<div style="font-family:Arial,sans-serif">'
+    +'<div style="text-align:center;margin-bottom:24px">'
+    +'<div style="font-size:17px;font-weight:800;color:#0F1D2E;text-transform:uppercase">TRANSCCEMA TRANSPORTES RODOVIÁRIOS LTDA</div>'
+    +'<div style="font-size:14px;font-weight:600;margin-top:4px">Relatório de Controle de Combustível</div>'
+    +'<div style="font-size:12px;color:#666;margin-top:4px">'+(placa?'Placa: '+placa:'Frota completa')+' • '+periodo+'</div></div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    +'<th style="'+thS+'">Data</th><th style="'+thS+'">Placa</th><th style="'+thS+'">Fornecedor</th>'
+    +'<th style="'+thS+'">NF</th><th style="'+thS+';text-align:right">Km Ini</th>'
+    +'<th style="'+thS+';text-align:right">Km Fim</th><th style="'+thS+'">Produto</th>'
+    +'<th style="'+thS+';text-align:right">Média</th><th style="'+thS+';text-align:right">Vl Unit</th>'
+    +'<th style="'+thS+';text-align:right">Litros</th><th style="'+thS+';text-align:right">Desc</th>'
+    +'<th style="'+thS+';text-align:right">Total</th></tr></thead>'
+    +'<tbody>'+linhas+'</tbody>'
+    +'<tfoot><tr style="background:#fff9e6;font-weight:700;border-top:2px solid #E07B10">'
+    +'<td colspan="2" style="'+tdS+'">'+totR+' registros</td>'
+    +'<td colspan="2" style="'+tdS+'">KM Total: '+(totKm?totKm.toLocaleString('pt-BR'):'—')+'</td>'
+    +'<td colspan="4" style="'+tdR+'">Litros: '+brn(totL,2)+' | Média: '+(mediaG?brn(mediaG,2):'—')+' km/L</td>'
+    +'<td colspan="4" style="'+tdR+';color:#E07B10;font-size:13px">TOTAL: '+brl(totV)+'</td>'
+    +'</tr></tfoot></table></div>';
+}
+
+// ── CFG / PLACAS ──────────────────────────────────────────────────
+function renderCfgPlacas() {
+  var map = {};
+  NOTAS.forEach(function(n){var p=n.placa||'—';if(!map[p]) map[p]={n:0,litros:0,valor:0};map[p].n++;map[p].litros+=Number(n.litros||0);map[p].valor+=Number(n.valor||0);});
+  var arr = Object.entries(map).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  document.getElementById('placas-gestao').innerHTML =
+    '<div class="tbl-wrap"><table><thead><tr><th>Placa</th><th>Registros</th><th>Litros</th><th>Valor</th><th></th></tr></thead><tbody>'
+    +arr.map(function(kv){var p=kv[0],r=kv[1];return '<tr><td><strong>'+p+'</strong></td><td class="mono">'+r.n+'</td>'
+      +'<td class="mono">'+brn(r.litros,0)+' L</td><td class="mono">'+brl(r.valor)+'</td>'
+      +'<td><button class="btn btn-red" style="padding:4px 10px;font-size:12px" onclick="excluirPlaca(\''+p+'\')">🗑</button></td></tr>';}).join('')
+    +'</tbody></table></div>';
+}
+function excluirPlaca(placa) {
+  var n=NOTAS.filter(function(x){return x.placa===placa;}).length;
+  if(!confirm('Excluir '+n+' registros de '+placa+'?')) return;
+  NOTAS=NOTAS.filter(function(x){return x.placa!==placa;});
+  localStorage.setItem(NOTAS_KEY,JSON.stringify(NOTAS));
+  renderAll(); renderCfgPlacas(); toast('Placa '+placa+' removida','ok');
+}
+function exportarJSON() {
+  var blob=new Blob([JSON.stringify(NOTAS,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='transccema_diesel_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function confirmarLimpar() {
+  if(!confirm('Apagar dados locais? A planilha Google não é afetada.')) return;
+  localStorage.removeItem(NOTAS_KEY); NOTAS=[]; renderAll(); toast('Dados locais apagados','ok');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────
+var toastTimer;
+function toast(msg, tipo) {
+  var el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(tipo||'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.className='';},3200);
+}
+</script>
+</body>
+</html>
