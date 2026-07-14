@@ -484,11 +484,31 @@ function calcViagens(notas) {
 }
 
 function numKm(v) {
-  if (!v) return null;
-  var n = Number(String(v).replace(/[^0-9.]/g,''));
-  if (!isNaN(n) && n > 1000) return n;
-  var m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) { var d=new Date(+m[1],+m[2]-1,+m[3]),base=new Date(1900,0,1); return Math.round((d-base)/86400000)+2; }
+  if (!v || v === '' || v === '0') return null;
+  var s = String(v).replace(/^'/, '').trim();
+  // Número puro (ex: "118910" ou "118910.0")
+  var n = parseFloat(s.replace(/[^0-9.]/g, ''));
+  if (!isNaN(n) && n > 1000 && n < 2000000) return Math.round(n);
+  // ISO date string (YYYY-MM-DD) — converter para serial
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    var d = new Date(+m[1],+m[2]-1,+m[3]), base = new Date(1899,11,30);
+    return Math.round((d - base) / 86400000);
+  }
+  // Data em texto tipo "Wed Jun 28 2225 00:00:00" — extrair só os dígitos do ano e reverter
+  // Detecta string com ano > 2100 (seria odometro convertido para data pelo Sheets)
+  var mDate = s.match(/\b(\d{4})\b.*\b(\d{4})\b/);
+  if (mDate) {
+    var ano = parseInt(mDate[1] > mDate[2] ? mDate[1] : mDate[2]);
+    if (ano > 2100) {
+      // Reverter: dias desde 30/12/1899 até essa "data"
+      var fakeDate = new Date(s);
+      if (!isNaN(fakeDate)) {
+        var base2 = new Date(1899,11,30);
+        return Math.round((fakeDate - base2) / 86400000);
+      }
+    }
+  }
   return null;
 }
 
