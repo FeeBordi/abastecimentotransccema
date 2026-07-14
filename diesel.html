@@ -221,7 +221,28 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
 // ── CONFIG ───────────────────────────────────────────────────────
 const APPS_URL_KEY = 'tc_diesel_url';
 const NOTAS_KEY    = 'tc_diesel_notas';
-const DEFAULT_URL  = 'https://script.google.com/macros/s/AKfycbwuKDrRPDP5kJbp5lnXptgJ20uNVc2Oci3LCZsGi4q976p1ZBP4ypPF5zCsEtjlxC_fng/exec';
+const DEFAULT_URL  = 'https://script.google.com/macros/s/AKfycbyQSPjv9xjUKvirEUZrVWyF3X84jCI49iySywOYT2sD6aOZ9GA2CzHD3dc8Uk2J18BYmw/exec';
+
+
+// Normalização de nomes de postos (NF-e usa razão social, sistema usa nome amigável)
+var NOMES_POSTOS_MAP = {
+  'REDE HG':         'POSTO CHEROKEE',
+  'HG COMBUSTIVEIS': 'POSTO CHEROKEE',
+  'POSTO CHEROKEE':  'POSTO CHEROKEE',
+  'REFORCO 4':       'POSTO REFORCO 4',
+  'LAMPIAO':         'POSTO LAMPIAO',
+  'LAMPIÃO':         'POSTO LAMPIAO',
+  'COTEGY':          'COTEGY',
+};
+function normPosto(nome) {
+  if (!nome || nome === '—') return nome || '—';
+  var up = nome.toUpperCase();
+  var keys = Object.keys(NOMES_POSTOS_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    if (up.indexOf(keys[i]) >= 0) return NOMES_POSTOS_MAP[keys[i]];
+  }
+  return nome;
+}
 
 let NOTAS = [];
 let chartD = null, chartP = null;
@@ -362,7 +383,7 @@ function renderVisao() {
     var o=n.origem||''; var badge=o==='xml'?'badge-xml':o==='cta'?'badge-cta':'badge-wpp';
     var orig=o==='xml'?'NF-e':o==='cta'?'CTA':o==='wpp'?'WPP':'Manual';
     return '<tr><td class="mono">'+fmtDate(n.data)+'</td><td><strong>'+(n.placa||'—')+'</strong></td>'
-          +'<td>'+(n.posto||'—')+'</td><td class="mono">'+brn(l,2)+' L</td>'
+          +'<td>'+normPosto(n.posto||'—')+'</td><td class="mono">'+brn(l,2)+' L</td>'
           +'<td class="mono">'+brl(v)+'</td><td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
           +'<td><span class="badge '+badge+'">'+orig+'</span></td></tr>';
   }).join('') || '<tr><td colspan="7" class="empty">Nenhum registro</td></tr>';
@@ -390,7 +411,7 @@ function renderChartDiario() {
 
 function renderChartPostos(mesDiesel) {
   var map = {};
-  mesDiesel.forEach(function(n){var p=n.posto||'Desconhecido';map[p]=(map[p]||0)+Number(n.litros||0);});
+  mesDiesel.forEach(function(n){var p=normPosto(n.posto)||'Desconhecido';map[p]=(map[p]||0)+Number(n.litros||0);});
   var sorted = Object.entries(map).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
   if (chartP) chartP.destroy();
   chartP = new Chart(document.getElementById('chart-postos'),{
@@ -456,7 +477,7 @@ function renderPlaca() {
     html='<div class="card"><div class="card-title">'+notas.length+' abastecimentos (sem CTA)</div>'
       +'<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>Preço/L</th></tr></thead><tbody>'
       +notas.map(function(n){var l=Number(n.litros||0),v=Number(n.valor||0),p=l>0&&v>0?v/l:0;
-        return '<tr><td class="mono">'+fmtDate(n.data)+'</td><td>'+(n.posto||'—')+'</td>'
+        return '<tr><td class="mono">'+fmtDate(n.data)+'</td><td>'+normPosto(n.posto||'—')+'</td>'
           +'<td class="mono">'+brn(l,2)+' L</td><td class="mono">'+brl(v)+'</td>'
           +'<td class="mono">'+(p>0?'R$ '+brn(p,3):'—')+'</td></tr>';}).join('')
       +'</tbody><tfoot><tr style="background:var(--accl)"><td colspan="2"><strong>Total</strong></td>'
@@ -557,7 +578,7 @@ function renderPostos() {
   var dias = parseInt(document.getElementById('sel-postos-per').value)||0;
   var notas = dias ? NOTAS.filter(function(n){return inPer(n.data,dias);}) : NOTAS;
   var map = {};
-  notas.forEach(function(n){var p=n.posto||'Desconhecido';if(!map[p]) map[p]={nome:p,litros:0,valor:0,n:0};map[p].litros+=Number(n.litros||0);map[p].valor+=Number(n.valor||0);map[p].n++;});
+  notas.forEach(function(n){var p=normPosto(n.posto)||'Desconhecido';if(!map[p]) map[p]={nome:p,litros:0,valor:0,n:0};map[p].litros+=Number(n.litros||0);map[p].valor+=Number(n.valor||0);map[p].n++;});
   var arr = Object.values(map).sort(function(a,b){return b.litros-a.litros;});
   var maxL = arr.length ? arr[0].litros : 1;
   document.getElementById('postos-list').innerHTML = arr.map(function(p,i){
@@ -613,7 +634,7 @@ function gerarRpt() {
       var med=kmP&&l>0?kmP/l:(Number(n.media_kml)||0)||null;
       totR++;totL+=l;totV+=v;if(kmP) totKm+=kmP;
       linhas+='<tr><td style="'+tdS+'">'+fmtDate(n.data)+'</td><td style="'+tdS+'"><strong>'+pl+'</strong></td>'
-        +'<td style="'+tdS+'">'+(n.posto||'—')+'</td><td style="'+tdS+'">'+(n.nf||'—')+'</td>'
+        +'<td style="'+tdS+'">'+normPosto(n.posto||'—')+'</td><td style="'+tdS+'">'+(n.nf||'—')+'</td>'
         +'<td style="'+tdR+'">'+(kmIni?kmIni.toLocaleString('pt-BR'):'—')+'</td>'
         +'<td style="'+tdR+'">'+(kmFim?kmFim.toLocaleString('pt-BR'):'—')+'</td>'
         +'<td style="'+tdS+'">DIESEL S10</td>'
