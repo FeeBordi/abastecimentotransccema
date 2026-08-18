@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Transccema — Abastecimentos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EEF2F7;--surf:#fff;--s2:#F8FAFC;--bor:#DDE4EE;
+  --nav:#162040;--nava:rgba(232,123,16,.15);--navt:rgba(255,255,255,.07);
+  --acc:#E07B10;--acc2:#F59E0B;--accl:#FEF3C7;
+  --grn:#059669;--gnl:#D1FAE5;--red:#DC2626;--blu:#0284C7;--bll:#DBEAFE;
+  --tx:#0F1D2E;--tx2:#4A5F7A;--tx3:#94A3B8;
+  --sh:0 2px 12px rgba(15,29,46,.08);
+}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);overflow:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--bor);border-radius:4px}
+#app{display:flex;height:100vh}
+/* SIDEBAR */
+#sb{width:220px;flex-shrink:0;background:var(--nav);display:flex;flex-direction:column;box-shadow:3px 0 16px rgba(0,0,0,.2)}
+#logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-row{display:flex;align-items:center;gap:10px}
+.logo-ic{width:34px;height:34px;background:linear-gradient(135deg,var(--acc),var(--acc2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo-name{font-size:13px;font-weight:800;color:#fff}.logo-sub{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em}
+#menu{flex:1;padding:8px;overflow-y:auto}
+.mi{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;margin-bottom:2px;transition:all .15s}
+.mi:hover{color:rgba(255,255,255,.85);background:var(--navt)}.mi.on{color:#fff;background:var(--nava);font-weight:600}.mi.on .mi-ic{color:var(--acc2)}
+.mi-ic{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+#sb-bot{padding:10px 8px;border-top:1px solid rgba(255,255,255,.08)}
+.sb-stat{background:rgba(255,255,255,.06);border-radius:7px;padding:9px 11px;font-size:11px;color:rgba(255,255,255,.5)}
+.sb-stat strong{color:#fff;font-size:16px;display:block;font-family:'JetBrains Mono',monospace}
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:56px;background:var(--surf);border-bottom:1px solid var(--bor);display:flex;align-items:center;padding:0 24px;gap:14px;flex-shrink:0;box-shadow:var(--sh)}
+#page-title{font-size:19px;font-weight:700;flex:1}
+.topbar-badge{font-size:11px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+#sync-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+#sync-btn:hover{opacity:.88}#sync-btn:disabled{opacity:.5;cursor:not-allowed}
+#content{flex:1;overflow-y:auto;padding:22px}
+.sec{display:none}.sec.on{display:block}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--surf);border-radius:11px;padding:16px 18px;box-shadow:var(--sh);border:1px solid var(--bor);position:relative;overflow:hidden}
+.kpi-label{font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.kpi-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--tx);line-height:1}
+.kpi-sub{font-size:11px;color:var(--tx3);margin-top:4px}
+.kpi-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--acc);transition:width 1s ease}
+.kpi.grn .kpi-bar{background:var(--grn)}.kpi.blu .kpi-bar{background:var(--blu)}.kpi.red .kpi-bar{background:var(--red)}
+.kpi-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:28px;opacity:.1}
+/* CARD */
+.card{background:var(--surf);border-radius:11px;padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);margin-bottom:18px}
+.card-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* TABELA */
+.tbl-wrap{overflow-x:auto;border-radius:7px;border:1px solid var(--bor)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{padding:9px 13px;background:var(--s2);font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap;border-bottom:1px solid var(--bor)}
+td{padding:9px 13px;border-bottom:1px solid var(--bor);color:var(--tx);vertical-align:middle}
+tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.badge-xml{background:var(--bll);color:var(--blu)}.badge-cta{background:var(--gnl);color:var(--grn)}.badge-wpp{background:var(--accl);color:var(--acc)}
+.badge-base{background:#E0F2FE;color:#0369A1}.badge-ext{background:#F1F5F9;color:var(--tx2)}
+/* FILTROS */
+.filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
+.filters label{font-size:11px;color:var(--tx2);font-weight:600;display:block;margin-bottom:3px}
+.filters select,.filters input{padding:7px 11px;border:1px solid var(--bor);border-radius:7px;font-family:inherit;font-size:12.5px;color:var(--tx);background:var(--surf);outline:none}
+.filters select:focus,.filters input:focus{border-color:var(--acc)}
+/* VIAGEM */
+.viagem{background:var(--surf);border:1px solid var(--bor);border-radius:11px;margin-bottom:14px;overflow:hidden;box-shadow:var(--sh)}
+.viagem-hdr{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--nav);cursor:pointer}
+.viagem-num{background:rgba(255,255,255,.15);color:#fff;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.viagem-info{flex:1}
+.viagem-periodo{font-size:12.5px;font-weight:600;color:#fff}
+.viagem-placa{font-size:11px;color:rgba(255,255,255,.6);margin-top:1px}
+.viagem-stats{display:flex;gap:18px}
+.vs{text-align:right}
+.vs-val{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#fff}
+.vs-lbl{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em}
+.chevron{color:rgba(255,255,255,.6);font-size:11px;transition:transform .2s;margin-left:6px}
+.viagem.open .chevron{transform:rotate(180deg)}
+.viagem:not(.open) .viagem-body{display:none}
+.viagem-body table{font-size:12px}
+.viagem-total td{background:var(--accl);font-weight:700;color:var(--acc);border-top:2px solid var(--acc)}
+/* RELATÓRIO */
+.rpt-controls{display:flex;gap:10px;margin-bottom:20px;align-items:flex-end;flex-wrap:wrap}
+.rpt-field{display:flex;flex-direction:column;gap:4px}
+.rpt-field label{font-size:11px;font-weight:600;color:var(--tx2)}
+.rpt-field select,.rpt-field input{padding:8px 12px;border:1px solid var(--bor);border-radius:7px;font-size:12.5px;font-family:inherit;color:var(--tx);background:var(--surf);outline:none}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:none}
+.btn-p{background:var(--acc);color:#fff}.btn-g{background:var(--s2);color:var(--tx2);border:1px solid var(--bor)}
+@media print{#sb,#topbar,.rpt-controls{display:none!important}#content{padding:0!important;overflow:visible!important}}
+.empty{text-align:center;padding:40px 24px;color:var(--tx3)}
+.empty-icon{font-size:42px;margin-bottom:10px;opacity:.4}.empty-msg{font-size:13px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;bottom:22px;right:22px;background:var(--nav);color:#fff;padding:11px 18px;border-radius:9px;font-size:12.5px;font-weight:500;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateY(0)}#toast.ok{background:var(--grn)}#toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="sb">
+  <div id="logo">
+    <div class="logo-row">
+      <div class="logo-ic">⛽</div>
+      <div><div class="logo-name">TRANSCCEMA</div><div class="logo-sub">Abastecimentos</div></div>
+    </div>
+  </div>
+  <nav id="menu">
+    <div class="mi on" onclick="go('visao',this)"><span class="mi-ic">📊</span> Visão Geral</div>
+    <div class="mi" onclick="go('viagens',this)"><span class="mi-ic">🚛</span> Viagens</div>
+    <div class="mi" onclick="go('placa',this)"><span class="mi-ic">🔍</span> Por Placa</div>
+    <div class="mi" onclick="go('postos',this)"><span class="mi-ic">📍</span> Postos</div>
+    <div class="mi" onclick="go('rpt',this)"><span class="mi-ic">📄</span> Relatório</div>
+  </nav>
+  <div id="sb-bot"><div class="sb-stat"><strong id="sb-total">—</strong>abastecimentos</div></div>
+</div>
+<div id="main">
+  <div id="topbar">
+    <div id="page-title">Visão Geral</div>
+    <span class="topbar-badge" id="last-sync">—</span>
+    <button id="sync-btn" onclick="sincronizar()">🔄 Sincronizar</button>
+  </div>
+  <div id="content">
+
+    <!-- VISÃO GERAL -->
+    <div id="sec-visao" class="sec on">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Litros este mês</div><div class="kpi-val" id="kv-litros">—</div><div class="kpi-sub" id="ks-litros">—</div><span class="kpi-icon">⛽</span><div class="kpi-bar" id="kb-litros" style="width:0"></div></div>
+        <div class="kpi grn"><div class="kpi-label">Custo este mês</div><div class="kpi-val" id="kv-custo">—</div><div class="kpi-sub" id="ks-custo">—</div><span class="kpi-icon">💰</span><div class="kpi-bar" id="kb-custo" style="width:0"></div></div>
+        <div class="kpi blu"><div class="kpi-label">Custo por km</div><div class="kpi-val" id="kv-custkm">—</div><div class="kpi-sub" id="ks-custkm">mês atual</div><span class="kpi-icon">📏</span><div class="kpi-bar" id="kb-custkm" style="width:0"></div></div>
+        <div class="kpi red"><div class="kpi-label">Preço médio/L</div><div class="kpi-val" id="kv-preco">—</div><div class="kpi-sub" id="ks-preco">mês atual</div><span class="kpi-icon">📈</span><div class="kpi-bar" id="kb-preco" style="width:0"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="card-title">📅 Consumo diário — 30 dias</div><canvas id="chart-diario" height="180"></canvas></div>
+        <div class="card"><div class="card-title">🏭 Top postos — mês atual</div><canvas id="chart-postos" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🕐 Últimos abastecimentos</div>
+        <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Placa</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>Tipo</th><th>Origem</th></tr></thead><tbody id="tb-ultimos"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- VIAGENS -->
+    <div id="sec-viagens" class="sec">
+      <div class="filters">
+        <div><label>Placa</label><select id="vg-placa" onchange="renderViagens()"><option value="">Todas</option></select></div>
+        <div><label>Período</label><select id="vg-per" onchange="renderViagens()"><option value="90">90 dias</option><option value="60">60 dias</option><option value="30">30 dias</option><option value="0">Tudo</option></select></div>
+      </div>
+      <div id="viagens-list"><div class="empty"><div class="empty-icon">🚛</div><div class="empty-msg">Selecione uma placa ou aguarde sincronizar</div></div></div>
+    </div>
+
+    <!-- POR PLACA -->
+    <div id="sec-placa" class="sec">
+      <div class="filters">
+        <div><label>Placa</label><select id="pl-placa" onchange="renderPlaca()"><option value="">Selecione...</option></select></div>
+        <div><label>Período</label><select id="pl-per" onchange="renderPlaca()"><option value="90">90 dias</option><option value="60">60 dias</option><option value="30">30 dias</option><option value="0">Tudo</option></select></div>
+      </div>
+      <div id="placa-out"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-msg">Selecione uma placa</div></div></div>
+    </div>
+
+    <!-- POSTOS -->
+    <div id="sec-postos" class="sec">
+      <div class="filters">
+        <div><label>Período</label><select id="pt-per" onchange="renderPostos()"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="0">Tudo</option></select></div>
+      </div>
+      <div class="card"><div class="card-title">📍 Ranking de postos</div><div id="postos-list"></div></div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="sec-rpt" class="sec">
+      <div class="rpt-controls">
+        <div class="rpt-field"><label>Placa</label><select id="rpt-placa"><option value="">Todas</option></select></div>
+        <div class="rpt-field"><label>De</label><input type="date" id="rpt-ini"></div>
+        <div class="rpt-field"><label>Até</label><input type="date" id="rpt-fim"></div>
+        <div style="display:flex;gap:8px;align-self:flex-end">
+          <button class="btn btn-p" onclick="gerarRpt()">📄 Gerar</button>
+          <button class="btn btn-g" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <div id="rpt-out"><div class="empty"><div class="empty-icon">📄</div><div class="empty-msg">Configure os filtros e clique em Gerar</div></div></div>
+    </div>
+
+  </div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const APPS_URL   = 'https://script.google.com/macros/s/AKfycbxoDflpnOSSSYfj0eksC6Ruw0fhyImr3KOs_1QPdRrjDRzGFrXTVqw_5ocMWE2UwnV1nQ/exec';
+const CACHE_KEY  = 'tc_abast_v1';
+
+let DADOS = [];
+let chartD = null, chartP = null;
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem(CACHE_KEY);
+  if (saved) { try { DADOS = JSON.parse(saved); } catch(e){} }
+  var hoje = new Date(), ini = new Date(hoje);
+  ini.setDate(ini.getDate()-30);
+  document.getElementById('rpt-ini').value = ini.toISOString().slice(0,10);
+  document.getElementById('rpt-fim').value = hoje.toISOString().slice(0,10);
+  renderAll();
+  sincronizar();
+});
+
+// ── HELPERS ───────────────────────────────────────────────────
+function brl(v) { return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function brn(v,d) { d=d||2; return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function ptDate(s) {
+  if(!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+  var m2 = String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m2) return new Date(+m2[1],+m2[2]-1,+m2[3]);
+  return null;
+}
+function fmtDate(s) { var d=ptDate(s); return d?d.toLocaleDateString('pt-BR'):s; }
+function inPer(d,dias) { var dt=ptDate(d);if(!dt)return false;if(!dias)return true;return dt>=new Date(Date.now()-dias*86400000); }
+
+// Normalização de postos no frontend
+var NOMES = {
+  'REDE HG':'POSTO CHEROKEE','HG COMBUSTIVEIS':'POSTO CHEROKEE',
+  'REFORCO 4':'POSTO REFORCO 4','REFORÇO 4':'POSTO REFORCO 4',
+  'LAMPIAO':'POSTO LAMPIAO','LAMPIÃO':'POSTO LAMPIAO',
+  'CONEXAO RIO':'CTA Conexao Rio','CONEXÃO RIO':'CTA Conexao Rio',
+};
+function normPosto(nome) {
+  if(!nome||nome==='—') return nome||'—';
+  var up=(nome+'').toUpperCase();
+  for(var k of Object.keys(NOMES)) if(up.includes(k)) return NOMES[k];
+  return nome;
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+var TITLES = {visao:'Visão Geral',viagens:'Viagens',placa:'Por Placa',postos:'Postos',rpt:'Relatório'};
+function go(sec,el) {
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.mi').forEach(function(m){m.classList.remove('on');});
+  document.getElementById('sec-'+sec).classList.add('on');
+  el.classList.add('on');
+  document.getElementById('page-title').textContent = TITLES[sec];
+  if(sec==='viagens') renderViagens();
+  if(sec==='postos') renderPostos();
+}
+
+// ── SYNC ──────────────────────────────────────────────────────
+function sincronizar() {
+  var btn = document.getElementById('sync-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Sincronizando...';
+  var url = APPS_URL + (APPS_URL.includes('?')?'&':'?') + 'json=1';
+  fetch(url,{redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var lista = Array.isArray(data) ? data : (data.abastecimentos||data||[]);
+      // Normalizar postos
+      lista = lista.map(function(r){ return Object.assign({},r,{posto:normPosto(r.posto)}); });
+      localStorage.setItem(CACHE_KEY,JSON.stringify(lista));
+      DADOS = lista;
+      var agora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('last-sync').textContent = 'Sync: '+agora;
+      toast(DADOS.length+' registros','ok');
+      renderAll();
+    })
+    .catch(function(e){toast('Erro: '+e.message,'err');})
+    .finally(function(){btn.disabled=false;btn.innerHTML='🔄 Sincronizar';});
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────
+function renderAll() {
+  populateSelects();
+  renderVisao();
+  document.getElementById('sb-total').textContent = DADOS.length.toLocaleString('pt-BR');
+}
+
+function populateSelects() {
+  var placas = [...new Set(DADOS.map(function(d){return d.placa;}).filter(Boolean))].sort();
+  ['vg-placa','pl-placa','rpt-placa'].forEach(function(id){
+    var el=document.getElementById(id), cur=el.value;
+    var extra=id==='pl-placa'?'<option value="">Selecione...</option>':'<option value="">Todas</option>';
+    el.innerHTML=extra+placas.map(function(p){return '<option value="'+p+'"'+(p===cur?' selected':'')+'>'+p+'</option>';}).join('');
+  });
+}
+
+// ── VISÃO GERAL ───────────────────────────────────────────────
+function renderVisao() {
+  var hoje = new Date();
+  var mesIni = new Date(hoje.getFullYear(),hoje.getMonth(),1);
+  var mesFim = new Date(hoje.getFullYear(),hoje.getMonth()+1,0);
+  var mes = DADOS.filter(function(d){ var dt=ptDate(d.data); return dt&&dt>=mesIni&&dt<=mesFim; });
+  var totL = mes.reduce(function(a,d){return a+Number(d.litros||0);},0);
+  var totV = mes.reduce(function(a,d){return a+Number(d.valor||0);},0);
+  var preco = totL>0?totV/totL:0;
+
+  // KM do mês — viagens fechadas
+  var viagens = calcViagens(DADOS);
+  var vMes = viagens.filter(function(v){ var dt=ptDate(v.dataIni); return dt&&dt>=mesIni&&dt<=mesFim; });
+  var totKm = vMes.reduce(function(a,v){return a+v.km;},0);
+  var custKm = totKm>0?totV/totKm:0;
+
+  document.getElementById('kv-litros').textContent = brn(totL,0)+' L';
+  document.getElementById('ks-litros').textContent = mes.length+' abastecimentos';
+  document.getElementById('kv-custo').textContent  = brl(totV);
+  document.getElementById('ks-custo').textContent  = totKm>0?brn(totKm,0)+' km rodados':'—';
+  document.getElementById('kv-custkm').textContent = custKm>0?'R$ '+brn(custKm,3):'—';
+  document.getElementById('ks-custkm').textContent = 'por km rodado';
+  document.getElementById('kv-preco').textContent  = preco>0?'R$ '+brn(preco,3):'—';
+  document.getElementById('ks-preco').textContent  = 'por litro';
+
+  setTimeout(function(){
+    document.getElementById('kb-litros').style.width = Math.min(totL/50000*85,85)+'%';
+    document.getElementById('kb-custo').style.width  = Math.min(totV/500000*85,85)+'%';
+    document.getElementById('kb-custkm').style.width = Math.min(custKm/3*85,85)+'%';
+    document.getElementById('kb-preco').style.width  = Math.min(preco/10*85,85)+'%';
+  },100);
+
+  // Últimos 20
+  var ult = [...DADOS].sort(function(a,b){return (ptDate(b.data)||0)-(ptDate(a.data)||0);}).slice(0,20);
+  document.getElementById('tb-ultimos').innerHTML = ult.map(function(d){
+    var l=Number(d.litros||0),v=Number(d.valor||0),pl=l>0&&v>0?v/l:0;
+    var obadge=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':'badge-wpp';
+    var orig=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':'WPP';
+    var tbadge=d.tipo==='base'?'badge-base':'badge-ext';
+    var tipo=d.tipo==='base'?'Base':'Externo';
+    return '<tr><td class="mono">'+fmtDate(d.data)+'</td>'
+      +'<td><strong>'+(d.placa||'—')+'</strong></td>'
+      +'<td>'+(d.posto||'—')+'</td>'
+      +'<td class="mono">'+brn(l,2)+' L</td>'
+      +'<td class="mono">'+brl(v)+'</td>'
+      +'<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
+      +'<td><span class="badge '+tbadge+'">'+tipo+'</span></td>'
+      +'<td><span class="badge '+obadge+'">'+orig+'</span></td></tr>';
+  }).join('')||'<tr><td colspan="8" class="empty">Nenhum registro</td></tr>';
+
+  renderChartDiario();
+  renderChartPostos(mes);
+}
+
+function renderChartDiario() {
+  var dias=[], hoje=new Date();
+  for(var i=29;i>=0;i--){var d=new Date(hoje);d.setDate(d.getDate()-i);dias.push(d);}
+  var labels=dias.map(function(d){return d.getDate()+'/'+(d.getMonth()+1);});
+  var data=dias.map(function(d){
+    var ds=d.toISOString().slice(0,10);
+    return DADOS.filter(function(r){var nd=ptDate(r.data);return nd&&nd.toISOString().slice(0,10)===ds;})
+                .reduce(function(a,r){return a+Number(r.litros||0);},0);
+  });
+  if(chartD) chartD.destroy();
+  chartD=new Chart(document.getElementById('chart-diario'),{
+    type:'bar',data:{labels:labels,datasets:[{label:'Litros',data:data,backgroundColor:'rgba(224,123,16,.75)',borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9}}},x:{grid:{display:false},ticks:{font:{size:8},maxTicksLimit:10}}}}
+  });
+}
+
+function renderChartPostos(dados) {
+  var map={};
+  dados.forEach(function(d){var p=normPosto(d.posto)||'Outros';map[p]=(map[p]||0)+Number(d.litros||0);});
+  var sorted=Object.entries(map).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+  if(chartP) chartP.destroy();
+  chartP=new Chart(document.getElementById('chart-postos'),{
+    type:'doughnut',
+    data:{labels:sorted.map(function(x){return x[0].length>22?x[0].slice(0,22)+'…':x[0];}),
+          datasets:[{data:sorted.map(function(x){return x[1];}),backgroundColor:['#E07B10','#F59E0B','#059669','#0284C7','#7C3AED','#DC2626'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12,padding:8}}}}
+  });
+}
+
+// ── CALC VIAGENS ──────────────────────────────────────────────
+function calcViagens(dados, filtroPl, filtroDias) {
+  // Agrupar por placa, ordenar por data
+  var porPlaca = {};
+  dados.forEach(function(d){
+    var pl=d.placa; if(!pl) return;
+    if(filtroPl && pl!==filtroPl) return;
+    if(filtroDias && !inPer(d.data,filtroDias)) return;
+    if(!porPlaca[pl]) porPlaca[pl]=[];
+    porPlaca[pl].push(d);
+  });
+
+  var viagens = [];
+  Object.keys(porPlaca).forEach(function(pl){
+    var reg = porPlaca[pl].sort(function(a,b){return (ptDate(a.data)||0)-(ptDate(b.data)||0);});
+    // Bases (CTA Conexão Rio)
+    var bases = reg.filter(function(r){return r.tipo==='base';});
+    if(bases.length<2){ return; } // precisa de pelo menos saída e retorno
+
+    for(var i=0;i<bases.length-1;i++){
+      var saida   = bases[i];
+      var retorno = bases[i+1];
+      var dtSaida = ptDate(saida.data);
+      var dtRet   = ptDate(retorno.data);
+      if(!dtSaida||!dtRet) continue;
+
+      // Externos entre saída e retorno
+      var externos = reg.filter(function(r){
+        if(r.tipo==='base') return false;
+        var dt=ptDate(r.data);
+        return dt&&dt>=dtSaida&&dt<=dtRet;
+      });
+
+      // Calcular km
+      var kmSaida   = parseInt(String(saida.km_odo||'').replace(/[^0-9]/g,''))||0;
+      var kmRetorno = parseInt(String(retorno.km_odo||'').replace(/[^0-9]/g,''))||0;
+      var km        = (kmRetorno>kmSaida)?(kmRetorno-kmSaida):0;
+
+      // Todos os registros da viagem (incluindo saída e retorno)
+      var todos = [saida].concat(externos).concat([retorno]);
+      var totL  = todos.reduce(function(a,r){return a+Number(r.litros||0);},0);
+      var totV  = todos.reduce(function(a,r){return a+Number(r.valor||0);},0);
+      var media = km>0&&totL>0?km/totL:0;
+      var custKm= km>0&&totV>0?totV/km:0;
+
+      viagens.push({
+        placa:    pl,
+        dataIni:  saida.data,
+        dataFim:  retorno.data,
+        km:       km,
+        kmSaida:  kmSaida,
+        kmRetorno:kmRetorno,
+        litros:   totL,
+        valor:    totV,
+        media:    media,
+        custKm:   custKm,
+        externos: externos,
+        saida:    saida,
+        retorno:  retorno,
+        todos:    todos,
+      });
+    }
+  });
+
+  return viagens.sort(function(a,b){return (ptDate(b.dataIni)||0)-(ptDate(a.dataIni)||0);});
+}
+
+// ── VIAGENS ───────────────────────────────────────────────────
+function renderViagens() {
+  var pl   = document.getElementById('vg-placa').value;
+  var dias = parseInt(document.getElementById('vg-per').value)||0;
+  var viagens = calcViagens(DADOS, pl||null, dias||null);
+  var el = document.getElementById('viagens-list');
+
+  if(!viagens.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-msg">Nenhuma viagem completa encontrada para o período</div></div>';
+    return;
+  }
+
+  el.innerHTML = viagens.map(function(v,i){
+    return '<div class="viagem open">'
+      +'<div class="viagem-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
+      +'<div class="viagem-num">V'+(i+1)+'</div>'
+      +'<div class="viagem-info">'
+      +'<div class="viagem-periodo">'+fmtDate(v.dataIni)+' → '+fmtDate(v.dataFim)+'</div>'
+      +'<div class="viagem-placa">'+v.placa+(v.km?' — '+brn(v.km,0)+' km':'')+'</div>'
+      +'</div>'
+      +'<div class="viagem-stats">'
+      +'<div class="vs"><div class="vs-val">'+brn(v.litros,0)+' L</div><div class="vs-lbl">Diesel</div></div>'
+      +'<div class="vs"><div class="vs-val">'+(v.media?brn(v.media,2)+'':' — ')+'</div><div class="vs-lbl">km/L</div></div>'
+      +'<div class="vs"><div class="vs-val">'+(v.custKm?'R$ '+brn(v.custKm,3):' — ')+'</div><div class="vs-lbl">R$/km</div></div>'
+      +'<div class="vs"><div class="vs-val">'+brl(v.valor)+'</div><div class="vs-lbl">Custo Total</div></div>'
+      +'</div>'
+      +'<span class="chevron">▼</span>'
+      +'</div>'
+      +'<div class="viagem-body"><table>'
+      +'<thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>KM</th><th>Tipo</th></tr></thead>'
+      +'<tbody>'
+      +v.todos.map(function(r){
+        var l=Number(r.litros||0),vv=Number(r.valor||0),pl=l>0&&vv>0?vv/l:0;
+        var km=r.km_odo?brn(parseInt(String(r.km_odo).replace(/[^0-9]/g,'')),0):'—';
+        var isBase=r.tipo==='base';
+        var style=isBase?'style="background:var(--s2);font-weight:500"':'';
+        return '<tr '+style+'>'
+          +'<td class="mono">'+fmtDate(r.data)+(r.hora?' '+r.hora:'')+'</td>'
+          +'<td>'+(r.posto||'—')+(isBase?' <span style="font-size:10px;color:var(--grn)">[BASE]</span>':'')+'</td>'
+          +'<td class="mono">'+brn(l,2)+' L</td>'
+          +'<td class="mono">'+brl(vv)+'</td>'
+          +'<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
+          +'<td class="mono">'+km+'</td>'
+          +'<td><span class="badge '+(isBase?'badge-base':'badge-ext')+'">'+(isBase?'Base':'Externo')+'</span></td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody>'
+      +'<tfoot><tr class="viagem-total">'
+      +'<td colspan="2"><strong>TOTAL</strong></td>'
+      +'<td class="mono"><strong>'+brn(v.litros,2)+' L</strong></td>'
+      +'<td class="mono"><strong>'+brl(v.valor)+'</strong></td>'
+      +'<td class="mono">'+(v.litros>0?'R$ '+brn(v.valor/v.litros,3):'—')+'</td>'
+      +'<td class="mono">'+(v.km?brn(v.km,0)+' km':'—')+'</td>'
+      +'<td>'+(v.custKm?'R$ '+brn(v.custKm,3)+'/km':'—')+'</td>'
+      +'</tr></tfoot>'
+      +'</table></div></div>';
+  }).join('');
+}
+
+// ── POR PLACA ─────────────────────────────────────────────────
+function renderPlaca() {
+  var pl  = document.getElementById('pl-placa').value;
+  var dias= parseInt(document.getElementById('pl-per').value)||0;
+  var el  = document.getElementById('placa-out');
+  if(!pl){ el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-msg">Selecione uma placa</div></div>'; return; }
+  var reg = DADOS.filter(function(d){return d.placa===pl&&(!dias||inPer(d.data,dias));});
+  if(!reg.length){ el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-msg">Nenhum registro</div></div>'; return; }
+  var totL=reg.reduce(function(a,d){return a+Number(d.litros||0);},0);
+  var totV=reg.reduce(function(a,d){return a+Number(d.valor||0);},0);
+  reg.sort(function(a,b){return (ptDate(b.data)||0)-(ptDate(a.data)||0);});
+  el.innerHTML='<div class="card"><div class="card-title">'+pl+' — '+reg.length+' abastecimentos</div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>KM</th><th>Tipo</th><th>Origem</th></tr></thead>'
+    +'<tbody>'+reg.map(function(d){
+      var l=Number(d.litros||0),v=Number(d.valor||0),pl2=l>0&&v>0?v/l:0;
+      var km=d.km_odo?parseInt(String(d.km_odo).replace(/[^0-9]/g,'')):0;
+      var ob=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':'badge-wpp';
+      var or=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':'WPP';
+      return '<tr><td class="mono">'+fmtDate(d.data)+'</td><td>'+(d.posto||'—')+'</td>'
+        +'<td class="mono">'+brn(l,2)+' L</td><td class="mono">'+brl(v)+'</td>'
+        +'<td class="mono">'+(pl2>0?'R$ '+brn(pl2,3):'—')+'</td>'
+        +'<td class="mono">'+(km>0?brn(km,0):'—')+'</td>'
+        +'<td><span class="badge '+(d.tipo==='base'?'badge-base':'badge-ext')+'">'+(d.tipo==='base'?'Base':'Externo')+'</span></td>'
+        +'<td><span class="badge '+ob+'">'+or+'</span></td></tr>';
+    }).join('')+'</tbody>'
+    +'<tfoot><tr style="background:var(--accl)"><td colspan="2"><strong>Total</strong></td>'
+    +'<td class="mono"><strong>'+brn(totL,2)+' L</strong></td>'
+    +'<td class="mono"><strong>'+brl(totV)+'</strong></td>'
+    +'<td class="mono">'+(totL>0?'R$ '+brn(totV/totL,3):'—')+'</td>'
+    +'<td colspan="3"></td></tr></tfoot>'
+    +'</table></div></div>';
+}
+
+// ── POSTOS ────────────────────────────────────────────────────
+function renderPostos() {
+  var dias=parseInt(document.getElementById('pt-per').value)||0;
+  var dados=dias?DADOS.filter(function(d){return inPer(d.data,dias);}):DADOS;
+  var map={};
+  dados.forEach(function(d){var p=normPosto(d.posto)||'Outros';if(!map[p])map[p]={litros:0,valor:0,n:0};map[p].litros+=Number(d.litros||0);map[p].valor+=Number(d.valor||0);map[p].n++;});
+  var arr=Object.entries(map).sort(function(a,b){return b[1].litros-a[1].litros;});
+  var maxL=arr.length?arr[0][1].litros:1;
+  document.getElementById('postos-list').innerHTML=arr.map(function(kv,i){
+    var p=kv[0],r=kv[1];var pl=r.litros>0?r.valor/r.litros:0;var pct=r.litros/maxL*100;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--bor)">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--tx3);width:18px;text-align:center;font-family:monospace">'+(i+1)+'</div>'
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:600">'+p+'</div><div style="font-size:11px;color:var(--tx3)">'+r.n+' abastecimentos</div></div>'
+      +'<div style="width:120px;background:var(--bor);border-radius:4px;height:5px;overflow:hidden"><div style="width:'+pct+'%;background:var(--acc);height:5px;border-radius:4px"></div></div>'
+      +'<div style="text-align:right;min-width:70px;font-size:13px;font-weight:700;font-family:monospace">'+brn(r.litros,0)+' L</div>'
+      +'<div style="text-align:right;min-width:80px;font-size:11px;color:var(--tx3)">'+(pl>0?'R$ '+brn(pl,3)+'/L':'')+'</div>'
+      +'<div style="text-align:right;min-width:90px;font-size:12px;font-weight:600">'+brl(r.valor)+'</div>'
+      +'</div>';
+  }).join('')||'<div class="empty"><div class="empty-msg">Nenhum dado</div></div>';
+}
+
+// ── RELATÓRIO ─────────────────────────────────────────────────
+function gerarRpt() {
+  var pl  = document.getElementById('rpt-placa').value;
+  var ini = document.getElementById('rpt-ini').value;
+  var fim = document.getElementById('rpt-fim').value;
+  var dIni=ini?new Date(ini+'T00:00:00'):null;
+  var dFim=fim?new Date(fim+'T23:59:59'):null;
+  var dados=DADOS.filter(function(d){
+    if(pl&&d.placa!==pl)return false;
+    var dt=ptDate(d.data);if(!dt)return false;
+    if(dIni&&dt<dIni)return false;if(dFim&&dt>dFim)return false;
+    return true;
+  }).sort(function(a,b){return (ptDate(a.data)||0)-(ptDate(b.data)||0);});
+  if(!dados.length){toast('Nenhum registro','err');return;}
+
+  var viagens=calcViagens(dados,pl||null,null);
+  var totL=dados.reduce(function(a,d){return a+Number(d.litros||0);},0);
+  var totV=dados.reduce(function(a,d){return a+Number(d.valor||0);},0);
+  var totKm=viagens.reduce(function(a,v){return a+v.km;},0);
+  var media=totKm>0&&totL>0?totKm/totL:0;
+  var custKm=totKm>0&&totV>0?totV/totKm:0;
+  var periodo=(dIni?dIni.toLocaleDateString('pt-BR'):'início')+' a '+(dFim?dFim.toLocaleDateString('pt-BR'):'hoje');
+
+  var th='padding:7px 10px;background:#f0f0f0;font-size:11px;font-weight:700;border:1px solid #ccc;text-align:left;white-space:nowrap';
+  var td='padding:6px 10px;font-size:12px;border:1px solid #ddd;vertical-align:middle';
+  var tdr=td+';text-align:right;font-family:JetBrains Mono,monospace';
+
+  var linhas=dados.map(function(d){
+    var l=Number(d.litros||0),v=Number(d.valor||0),pl2=l>0&&v>0?v/l:0;
+    var km=d.km_odo?parseInt(String(d.km_odo).replace(/[^0-9]/g,'')):null;
+    return '<tr><td style="'+td+'">'+fmtDate(d.data)+'</td>'
+      +'<td style="'+td+'"><strong>'+d.placa+'</strong></td>'
+      +'<td style="'+td+'">'+(d.posto||'—')+'</td>'
+      +'<td style="'+td+'">'+(d.nf||'—')+'</td>'
+      +'<td style="'+tdr+'">'+(km?km.toLocaleString('pt-BR'):'—')+'</td>'
+      +'<td style="'+td+'">DIESEL S10</td>'
+      +'<td style="'+tdr+'">'+(pl2>0?'R$ '+brn(pl2,2):'—')+'</td>'
+      +'<td style="'+tdr+'">'+brn(l,4)+'</td>'
+      +'<td style="'+tdr+'">'+brl(v)+'</td></tr>';
+  }).join('');
+
+  document.getElementById('rpt-out').innerHTML=
+    '<div style="font-family:Arial,sans-serif">'
+    +'<div style="text-align:center;margin-bottom:24px">'
+    +'<div style="font-size:17px;font-weight:800;color:#0F1D2E;text-transform:uppercase">TRANSCCEMA TRANSPORTES RODOVIÁRIOS LTDA</div>'
+    +'<div style="font-size:14px;font-weight:600;margin-top:4px">Relatório de Controle de Combustível</div>'
+    +'<div style="font-size:12px;color:#666;margin-top:3px">'+(pl?'Placa: '+pl:'Frota completa')+' • '+periodo+'</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">'
+    +[['⛽ Litros',brn(totL,2)+' L'],['💰 Custo Total',brl(totV)],['📏 KM Rodados',totKm?totKm.toLocaleString('pt-BR')+' km':'—'],['📈 Custo/km',custKm?'R$ '+brn(custKm,3):'—']].map(function(kv){
+      return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center">'
+        +'<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em">'+kv[0]+'</div>'
+        +'<div style="font-size:20px;font-weight:800;color:#0F1D2E;margin-top:4px;font-family:JetBrains Mono,monospace">'+kv[1]+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    +'<th style="'+th+'">Data</th><th style="'+th+'">Placa</th><th style="'+th+'">Fornecedor</th>'
+    +'<th style="'+th+'">NF</th><th style="'+th+';text-align:right">Odômetro</th>'
+    +'<th style="'+th+'">Produto</th><th style="'+th+';text-align:right">Vl Unit</th>'
+    +'<th style="'+th+';text-align:right">Litros</th><th style="'+th+';text-align:right">Total</th>'
+    +'</tr></thead><tbody>'+linhas+'</tbody>'
+    +'<tfoot><tr style="background:#fff9e6;border-top:2px solid #E07B10;font-weight:700">'
+    +'<td colspan="4" style="'+td+'">'+dados.length+' registros</td>'
+    +'<td colspan="3" style="'+tdr+'">Média: '+(media?brn(media,2)+' km/L':'—')+'</td>'
+    +'<td style="'+tdr+'"><strong>'+brn(totL,2)+'</strong></td>'
+    +'<td style="'+tdr+';color:#E07B10;font-size:13px"><strong>'+brl(totV)+'</strong></td>'
+    +'</tr></tfoot></table></div>';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+var tt;
+function toast(msg,tipo){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.className='show '+(tipo||'');
+  clearTimeout(tt);tt=setTimeout(function(){el.className='';},3200);
+}
+</script>
+</body>
+</html>
