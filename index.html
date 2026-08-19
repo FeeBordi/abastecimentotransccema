@@ -112,6 +112,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
   </div>
   <nav id="menu">
     <div class="mi on" onclick="go('visao',this)"><span class="mi-ic">📊</span> Visão Geral</div>
+    <div class="mi" onclick="go('add',this)"><span class="mi-ic">📷</span> Adicionar Nota</div>
     <div class="mi" onclick="go('viagens',this)"><span class="mi-ic">🚛</span> Viagens</div>
     <div class="mi" onclick="go('placa',this)"><span class="mi-ic">🔍</span> Por Placa</div>
     <div class="mi" onclick="go('postos',this)"><span class="mi-ic">📍</span> Postos</div>
@@ -141,7 +142,46 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
       </div>
       <div class="card">
         <div class="card-title">🕐 Últimos abastecimentos</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Placa</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>Tipo</th><th>Origem</th></tr></thead><tbody id="tb-ultimos"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Placa</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>Tipo</th><th>Origem</th><th></th></tr></thead><tbody id="tb-ultimos"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ADICIONAR NOTA -->
+    <div id="sec-add" class="sec">
+      <div class="card" style="max-width:520px">
+        <div class="card-title">📷 Adicionar abastecimento por foto</div>
+        <p style="font-size:12.5px;color:var(--tx2);margin-bottom:14px">
+          Tire uma foto do cupom, ou escolha uma da galeria. O sistema lê os dados
+          automaticamente (mesmo processo do WhatsApp) e verifica duplicata antes de salvar.
+        </p>
+
+        <input type="file" id="add-file" accept="image/*" capture="environment"
+               style="display:none" onchange="addPreview(this)">
+        <div id="add-dropzone"
+             style="border:2px dashed var(--bor);border-radius:10px;padding:24px;text-align:center;cursor:pointer;margin-bottom:14px"
+             onclick="document.getElementById('add-file').click()">
+          <div id="add-preview-wrap" style="display:none;margin-bottom:10px">
+            <img id="add-preview" style="max-width:100%;max-height:220px;border-radius:8px">
+          </div>
+          <div id="add-placeholder">
+            <div style="font-size:32px;margin-bottom:6px">📷</div>
+            <div style="font-size:13px;color:var(--tx2)">Toque para tirar foto ou escolher da galeria</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">
+            Placa (opcional — ajuda a leitura se o cupom estiver ruim)
+          </label>
+          <input type="text" id="add-placa" placeholder="Ex: TJG0B59"
+                 style="width:100%;padding:9px 12px;border:1px solid var(--bor);border-radius:8px;font-size:13px;font-family:inherit;outline:none;text-transform:uppercase">
+        </div>
+
+        <button class="btn btn-p" style="width:100%;justify-content:center;padding:11px" id="add-btn" onclick="enviarFoto()">
+          Enviar e salvar
+        </button>
+
+        <div id="add-status" style="margin-top:14px"></div>
       </div>
     </div>
 
@@ -239,7 +279,7 @@ function normPosto(nome) {
 }
 
 // ── NAV ───────────────────────────────────────────────────────
-var TITLES = {visao:'Visão Geral',viagens:'Viagens',placa:'Por Placa',postos:'Postos',rpt:'Relatório'};
+var TITLES = {visao:'Visão Geral',add:'Adicionar Nota',viagens:'Viagens',placa:'Por Placa',postos:'Postos',rpt:'Relatório'};
 function go(sec,el) {
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});
   document.querySelectorAll('.mi').forEach(function(m){m.classList.remove('on');});
@@ -270,6 +310,91 @@ function sincronizar() {
     })
     .catch(function(e){toast('Erro: '+e.message,'err');})
     .finally(function(){btn.disabled=false;btn.innerHTML='🔄 Sincronizar';});
+}
+
+// ── EXCLUIR REGISTRO ─────────────────────────────────────────
+function excluirRegistro(chave) {
+  if (!confirm('Excluir este abastecimento? Essa ação não pode ser desfeita.')) return;
+  fetch(APPS_URL, { method: 'POST', body: JSON.stringify({ acao: 'excluir', chave: chave }) })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        toast('Excluído', 'ok');
+        DADOS = DADOS.filter(function(d){ return d.chave !== chave; });
+        localStorage.setItem(CACHE_KEY, JSON.stringify(DADOS));
+        renderAll();
+        if (document.getElementById('sec-placa').classList.contains('on')) renderPlaca();
+        if (document.getElementById('sec-viagens').classList.contains('on')) renderViagens();
+      } else {
+        toast(data.msg || 'Erro ao excluir', 'err');
+      }
+    })
+    .catch(function(e){ toast('Erro: ' + e.message, 'err'); });
+}
+
+// ── ADICIONAR NOTA POR FOTO ───────────────────────────────────
+var addFotoBase64 = null, addFotoMime = null;
+
+function addPreview(input) {
+  var file = input.files[0];
+  if (!file) return;
+  addFotoMime = file.type || 'image/jpeg';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    addFotoBase64 = dataUrl.split(',')[1];
+    document.getElementById('add-preview').src = dataUrl;
+    document.getElementById('add-preview-wrap').style.display = 'block';
+    document.getElementById('add-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function enviarFoto() {
+  if (!addFotoBase64) { toast('Escolha uma foto primeiro', 'err'); return; }
+  var placaForcada = document.getElementById('add-placa').value.trim().toUpperCase();
+  var btn = document.getElementById('add-btn');
+  var status = document.getElementById('add-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Lendo cupom...';
+  status.innerHTML = '';
+
+  fetch(APPS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      acao: 'foto',
+      imagemBase64: addFotoBase64,
+      mimeType: addFotoMime,
+      placaForcada: placaForcada
+    })
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok && data.novas > 0) {
+        status.innerHTML = '<div style="background:var(--gnl);color:var(--grn);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">✅ Registrado com sucesso!</div>';
+        toast('Nota adicionada', 'ok');
+        // limpar formulario
+        addFotoBase64 = null;
+        document.getElementById('add-file').value = '';
+        document.getElementById('add-placa').value = '';
+        document.getElementById('add-preview-wrap').style.display = 'none';
+        document.getElementById('add-placeholder').style.display = 'block';
+        sincronizar();
+      } else if (data.ok && data.dups > 0) {
+        var dup = data.duplicados && data.duplicados[0];
+        var msg = dup ? (dup.litros + 'L em ' + dup.data) : 'este abastecimento';
+        status.innerHTML = '<div style="background:var(--accl);color:var(--acc);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠️ ' + msg + ' já está no relatório. Não foi duplicado.</div>';
+      } else {
+        status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">❌ ' + (data.msg || 'Erro ao processar') + '</div>';
+      }
+    })
+    .catch(function(e){
+      status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">❌ Erro: ' + e.message + '</div>';
+    })
+    .finally(function(){
+      btn.disabled = false;
+      btn.innerHTML = 'Enviar e salvar';
+    });
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────
@@ -324,8 +449,8 @@ function renderVisao() {
   var ult = [...DADOS].sort(function(a,b){return (ptDate(b.data)||0)-(ptDate(a.data)||0);}).slice(0,20);
   document.getElementById('tb-ultimos').innerHTML = ult.map(function(d){
     var l=Number(d.litros||0),v=Number(d.valor||0),pl=l>0&&v>0?v/l:0;
-    var obadge=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':'badge-wpp';
-    var orig=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':'WPP';
+    var obadge=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':d.origem==='web'?'badge-base':'badge-wpp';
+    var orig=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':'WPP';
     var tbadge=d.tipo==='base'?'badge-base':'badge-ext';
     var tipo=d.tipo==='base'?'Base':'Externo';
     return '<tr><td class="mono">'+fmtDate(d.data)+'</td>'
@@ -335,8 +460,9 @@ function renderVisao() {
       +'<td class="mono">'+brl(v)+'</td>'
       +'<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
       +'<td><span class="badge '+tbadge+'">'+tipo+'</span></td>'
-      +'<td><span class="badge '+obadge+'">'+orig+'</span></td></tr>';
-  }).join('')||'<tr><td colspan="8" class="empty">Nenhum registro</td></tr>';
+      +'<td><span class="badge '+obadge+'">'+orig+'</span></td>'
+      +'<td><button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
+  }).join('')||'<tr><td colspan="9" class="empty">Nenhum registro</td></tr>';
 
   renderChartDiario();
   renderChartPostos(mes);
@@ -510,18 +636,19 @@ function renderPlaca() {
   var totV=reg.reduce(function(a,d){return a+Number(d.valor||0);},0);
   reg.sort(function(a,b){return (ptDate(b.data)||0)-(ptDate(a.data)||0);});
   el.innerHTML='<div class="card"><div class="card-title">'+pl+' — '+reg.length+' abastecimentos</div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>KM</th><th>Tipo</th><th>Origem</th></tr></thead>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Posto</th><th>Litros</th><th>Valor</th><th>R$/L</th><th>KM</th><th>Tipo</th><th>Origem</th><th></th></tr></thead>'
     +'<tbody>'+reg.map(function(d){
       var l=Number(d.litros||0),v=Number(d.valor||0),pl2=l>0&&v>0?v/l:0;
       var km=d.km_odo?parseInt(String(d.km_odo).replace(/[^0-9]/g,'')):0;
-      var ob=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':'badge-wpp';
-      var or=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':'WPP';
+      var ob=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':d.origem==='web'?'badge-base':'badge-wpp';
+      var or=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':'WPP';
       return '<tr><td class="mono">'+fmtDate(d.data)+'</td><td>'+(d.posto||'—')+'</td>'
         +'<td class="mono">'+brn(l,2)+' L</td><td class="mono">'+brl(v)+'</td>'
         +'<td class="mono">'+(pl2>0?'R$ '+brn(pl2,3):'—')+'</td>'
         +'<td class="mono">'+(km>0?brn(km,0):'—')+'</td>'
         +'<td><span class="badge '+(d.tipo==='base'?'badge-base':'badge-ext')+'">'+(d.tipo==='base'?'Base':'Externo')+'</span></td>'
-        +'<td><span class="badge '+ob+'">'+or+'</span></td></tr>';
+        +'<td><span class="badge '+ob+'">'+or+'</span></td>'
+        +'<td><button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
     }).join('')+'</tbody>'
     +'<tfoot><tr style="background:var(--accl)"><td colspan="2"><strong>Total</strong></td>'
     +'<td class="mono"><strong>'+brn(totL,2)+' L</strong></td>'
