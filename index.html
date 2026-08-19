@@ -482,9 +482,9 @@ function renderVisao() {
   var totV = mes.reduce(function(a,d){return a+Number(d.valor||0);},0);
   var preco = totL>0?totV/totL:0;
 
-  // KM do mês — viagens fechadas
+  // KM do mês — viagens fechadas (conta pela data de fechamento/retorno)
   var viagens = calcViagens(DADOS);
-  var vMes = viagens.filter(function(v){ var dt=ptDate(v.dataIni); return dt&&dt>=mesIni&&dt<=mesFim; });
+  var vMes = viagens.filter(function(v){ var dt=ptDate(v.dataFim); return dt&&dt>=mesIni&&dt<=mesFim; });
   var totKm = vMes.reduce(function(a,v){return a+v.km;},0);
   var custKm = totKm>0?totV/totKm:0;
 
@@ -558,13 +558,13 @@ function renderChartPostos(dados) {
 }
 
 // ── CALC VIAGENS ──────────────────────────────────────────────
-function calcViagens(dados, filtroPl, filtroDias) {
-  // Agrupar por placa, ordenar por data
+function calcViagens(dados, filtroPl, filtroPeriodo) {
+  // Agrupar por placa usando TODO o historico (sem cortar por periodo ainda) —
+  // senao o CTA anterior que fecha a conta pode ficar de fora e a viagem nunca fecha.
   var porPlaca = {};
   dados.forEach(function(d){
     var pl=d.placa; if(!pl) return;
     if(filtroPl && pl!==filtroPl) return;
-    if(filtroDias && !inPer(d.data,filtroDias)) return;
     if(!porPlaca[pl]) porPlaca[pl]=[];
     porPlaca[pl].push(d);
   });
@@ -590,7 +590,7 @@ function calcViagens(dados, filtroPl, filtroDias) {
         return dt&&dt>=dtSaida&&dt<=dtRet;
       });
 
-      // Calcular km
+      // Calcular km: CTA atual (retorno) - CTA anterior (saída)
       var kmSaida   = parseInt(String(saida.km_odo||'').replace(/[^0-9]/g,''))||0;
       var kmRetorno = parseInt(String(retorno.km_odo||'').replace(/[^0-9]/g,''))||0;
       var km        = (kmRetorno>kmSaida)?(kmRetorno-kmSaida):0;
@@ -620,6 +620,24 @@ function calcViagens(dados, filtroPl, filtroDias) {
       });
     }
   });
+
+  // So agora aplica o filtro de periodo — pela data de FECHAMENTO (retorno).
+  // A viagem "pertence" ao periodo em que ela terminou, mesmo que tenha
+  // comecado antes. filtroPeriodo pode ser: numero (ultimos X dias) OU
+  // {dIni, dFim} (intervalo explicito, usado no Relatório).
+  if(filtroPeriodo){
+    if(typeof filtroPeriodo === 'number'){
+      viagens = viagens.filter(function(v){ return inPer(v.dataFim, filtroPeriodo); });
+    } else {
+      viagens = viagens.filter(function(v){
+        var dt = ptDate(v.dataFim);
+        if(!dt) return false;
+        if(filtroPeriodo.dIni && dt < filtroPeriodo.dIni) return false;
+        if(filtroPeriodo.dFim && dt > filtroPeriodo.dFim) return false;
+        return true;
+      });
+    }
+  }
 
   return viagens.sort(function(a,b){return (ptDate(b.dataIni)||0)-(ptDate(a.dataIni)||0);});
 }
@@ -753,7 +771,7 @@ function gerarRpt() {
   }).sort(function(a,b){return (ptDate(a.data)||0)-(ptDate(b.data)||0);});
   if(!dados.length){toast('Nenhum registro','err');return;}
 
-  var viagens=calcViagens(dados,pl||null,null);
+  var viagens=calcViagens(DADOS,pl||null,{dIni:dIni,dFim:dFim});
   var totL=dados.reduce(function(a,d){return a+Number(d.litros||0);},0);
   var totV=dados.reduce(function(a,d){return a+Number(d.valor||0);},0);
   var totKm=viagens.reduce(function(a,v){return a+v.km;},0);
