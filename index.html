@@ -148,36 +148,25 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
 
     <!-- ADICIONAR NOTA -->
     <div id="sec-add" class="sec">
-      <div class="card" style="max-width:520px">
+      <div class="card" style="max-width:560px">
         <div class="card-title">📷 Adicionar abastecimento por foto</div>
         <p style="font-size:12.5px;color:var(--tx2);margin-bottom:14px">
-          Tire uma foto do cupom, ou escolha uma da galeria. O sistema lê os dados
-          automaticamente (mesmo processo do WhatsApp) e verifica duplicata antes de salvar.
+          Escolha uma ou várias fotos de cupom (da galeria ou câmera). O sistema lê os
+          dados de cada uma automaticamente e verifica duplicata antes de salvar.
         </p>
 
-        <input type="file" id="add-file" accept="image/*" capture="environment"
-               style="display:none" onchange="addPreview(this)">
+        <input type="file" id="add-file" accept="image/*" multiple
+               style="display:none" onchange="addFilesSelected(this)">
         <div id="add-dropzone"
              style="border:2px dashed var(--bor);border-radius:10px;padding:24px;text-align:center;cursor:pointer;margin-bottom:14px"
              onclick="document.getElementById('add-file').click()">
-          <div id="add-preview-wrap" style="display:none;margin-bottom:10px">
-            <img id="add-preview" style="max-width:100%;max-height:220px;border-radius:8px">
-          </div>
-          <div id="add-placeholder">
-            <div style="font-size:32px;margin-bottom:6px">📷</div>
-            <div style="font-size:13px;color:var(--tx2)">Toque para tirar foto ou escolher da galeria</div>
-          </div>
+          <div style="font-size:32px;margin-bottom:6px">📷</div>
+          <div style="font-size:13px;color:var(--tx2)">Toque para escolher uma ou várias fotos</div>
         </div>
 
-        <div style="margin-bottom:12px">
-          <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">
-            Placa (opcional — ajuda a leitura se o cupom estiver ruim)
-          </label>
-          <input type="text" id="add-placa" placeholder="Ex: TJG0B59"
-                 style="width:100%;padding:9px 12px;border:1px solid var(--bor);border-radius:8px;font-size:13px;font-family:inherit;outline:none;text-transform:uppercase">
-        </div>
+        <div id="add-fila"></div>
 
-        <button class="btn btn-p" style="width:100%;justify-content:center;padding:11px" id="add-btn" onclick="enviarFoto()">
+        <button class="btn btn-p" style="width:100%;justify-content:center;padding:11px;display:none" id="add-btn" onclick="enviarFila()">
           Enviar e salvar
         </button>
 
@@ -334,69 +323,137 @@ function excluirRegistro(chave) {
     .catch(function(e){ toast('Erro: ' + e.message, 'err'); });
 }
 
-// ── ADICIONAR NOTA POR FOTO ───────────────────────────────────
-var addFotoBase64 = null, addFotoMime = null;
+// ── ADICIONAR NOTA POR FOTO (varias de uma vez) ──────────────
+var addFila = []; // [{id, file, base64, mime, placa, status, msg}]
 
-function addPreview(input) {
-  var file = input.files[0];
-  if (!file) return;
-  addFotoMime = file.type || 'image/jpeg';
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var dataUrl = e.target.result;
-    addFotoBase64 = dataUrl.split(',')[1];
-    document.getElementById('add-preview').src = dataUrl;
-    document.getElementById('add-preview-wrap').style.display = 'block';
-    document.getElementById('add-placeholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+function addFilesSelected(input) {
+  var files = Array.from(input.files || []);
+  files.forEach(function(file) {
+    var item = { id: 'f'+Date.now()+Math.random().toString(36).slice(2), file: file,
+                 base64: null, mime: file.type || 'image/jpeg', placa: '', status: 'lendo' };
+    addFila.push(item);
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      item.base64 = e.target.result.split(',')[1];
+      item.status = 'pronto';
+      renderFila();
+    };
+    reader.readAsDataURL(file);
+  });
+  renderFila();
+  input.value = '';
 }
 
-function enviarFoto() {
-  if (!addFotoBase64) { toast('Escolha uma foto primeiro', 'err'); return; }
-  var placaForcada = document.getElementById('add-placa').value.trim().toUpperCase();
-  var btn = document.getElementById('add-btn');
-  var status = document.getElementById('add-status');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Lendo cupom...';
-  status.innerHTML = '';
+function addRemover(id) {
+  addFila = addFila.filter(function(i){ return i.id !== id; });
+  renderFila();
+}
 
-  fetch(APPS_URL, {
-    method: 'POST',
-    body: JSON.stringify({
-      acao: 'foto',
-      imagemBase64: addFotoBase64,
-      mimeType: addFotoMime,
-      placaForcada: placaForcada
-    })
-  })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+function addSetPlaca(id, valor) {
+  var item = addFila.find(function(i){ return i.id === id; });
+  if (item) item.placa = valor.toUpperCase();
+}
+
+function renderFila() {
+  var wrap = document.getElementById('add-fila');
+  var btn = document.getElementById('add-btn');
+
+  if (!addFila.length) {
+    wrap.innerHTML = '';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = 'flex';
+  btn.disabled = addFila.some(function(i){ return i.status === 'lendo'; });
+
+  wrap.innerHTML = addFila.map(function(item) {
+    var thumb = item.base64
+      ? '<img src="data:'+item.mime+';base64,'+item.base64+'" style="width:56px;height:56px;object-fit:cover;border-radius:6px">'
+      : '<div style="width:56px;height:56px;border-radius:6px;background:var(--s2);display:flex;align-items:center;justify-content:center"><span class="spinner"></span></div>';
+
+    var statusBadge = '';
+    if (item.status === 'enviando') statusBadge = '<span class="badge" style="background:var(--bll);color:var(--blu)">Enviando...</span>';
+    if (item.status === 'ok')       statusBadge = '<span class="badge badge-cta">✅ Salvo</span>';
+    if (item.status === 'dup')      statusBadge = '<span class="badge" style="background:var(--accl);color:var(--acc)">⚠️ Duplicado</span>';
+    if (item.status === 'erro')     statusBadge = '<span class="badge" style="background:var(--rdl);color:var(--red)">❌ Erro</span>';
+
+    return '<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--bor);border-radius:8px;margin-bottom:8px">'
+      + thumb
+      + '<div style="flex:1;min-width:0">'
+      + '<input type="text" placeholder="Placa (opcional)" value="'+item.placa+'" '
+      + 'oninput="addSetPlaca(\''+item.id+'\',this.value)" '
+      + 'style="width:100%;padding:6px 8px;border:1px solid var(--bor);border-radius:6px;font-size:12px;text-transform:uppercase;margin-bottom:4px" '
+      + (item.status !== 'pronto' && item.status !== 'lendo' ? 'disabled' : '') + '>'
+      + (item.msg ? '<div style="font-size:11px;color:var(--tx3)">'+item.msg+'</div>' : statusBadge)
+      + '</div>'
+      + (item.status === 'pronto' || item.status === 'lendo'
+          ? '<button onclick="addRemover(\''+item.id+'\')" style="background:none;border:none;cursor:pointer;font-size:16px;opacity:.5">✕</button>'
+          : '')
+      + '</div>';
+  }).join('');
+
+  var prontas = addFila.filter(function(i){ return i.status === 'pronto'; }).length;
+  btn.innerHTML = 'Enviar '+addFila.length+' foto'+(addFila.length>1?'s':'')+' e salvar';
+}
+
+async function enviarFila() {
+  var btn = document.getElementById('add-btn');
+  btn.disabled = true;
+  var okCount = 0, dupCount = 0, erroCount = 0;
+
+  var pendentes = addFila.filter(function(i){ return i.status === 'pronto'; });
+
+  for (var i = 0; i < pendentes.length; i++) {
+    var item = pendentes[i];
+    item.status = 'enviando';
+    renderFila();
+
+    try {
+      var resp = await fetch(APPS_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          acao: 'foto',
+          imagemBase64: item.base64,
+          mimeType: item.mime,
+          placaForcada: item.placa
+        })
+      });
+      var data = await resp.json();
+
       if (data.ok && data.novas > 0) {
-        status.innerHTML = '<div style="background:var(--gnl);color:var(--grn);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">✅ Registrado com sucesso!</div>';
-        toast('Nota adicionada', 'ok');
-        // limpar formulario
-        addFotoBase64 = null;
-        document.getElementById('add-file').value = '';
-        document.getElementById('add-placa').value = '';
-        document.getElementById('add-preview-wrap').style.display = 'none';
-        document.getElementById('add-placeholder').style.display = 'block';
-        sincronizar();
+        item.status = 'ok';
+        item.msg = (data.placaLida||'') + ' salvo';
+        okCount++;
       } else if (data.ok && data.dups > 0) {
+        item.status = 'dup';
         var dup = data.duplicados && data.duplicados[0];
-        var msg = dup ? (dup.litros + 'L em ' + dup.data) : 'este abastecimento';
-        status.innerHTML = '<div style="background:var(--accl);color:var(--acc);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠️ ' + msg + ' já está no relatório. Não foi duplicado.</div>';
+        item.msg = dup ? (dup.litros+'L em '+dup.data+' já registrado') : 'já registrado';
+        dupCount++;
       } else {
-        status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">❌ ' + (data.msg || 'Erro ao processar') + '</div>';
+        item.status = 'erro';
+        item.msg = data.msg || 'Erro ao processar';
+        erroCount++;
       }
-    })
-    .catch(function(e){
-      status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">❌ Erro: ' + e.message + '</div>';
-    })
-    .finally(function(){
-      btn.disabled = false;
-      btn.innerHTML = 'Enviar e salvar';
-    });
+    } catch (e) {
+      item.status = 'erro';
+      item.msg = 'Erro: ' + e.message;
+      erroCount++;
+    }
+    renderFila();
+  }
+
+  var status = document.getElementById('add-status');
+  var partes = [];
+  if (okCount)   partes.push('✅ '+okCount+' salva'+(okCount>1?'s':''));
+  if (dupCount)  partes.push('⚠️ '+dupCount+' duplicada'+(dupCount>1?'s':''));
+  if (erroCount) partes.push('❌ '+erroCount+' com erro');
+  status.innerHTML = '<div style="background:var(--s2);padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600">'+partes.join(' &nbsp;·&nbsp; ')+'</div>';
+
+  if (okCount) sincronizar();
+
+  // Limpar as que deram certo/duplicada da fila; deixar erros pra tentar de novo
+  addFila = addFila.filter(function(i){ return i.status === 'erro'; });
+  renderFila();
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────
