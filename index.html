@@ -257,6 +257,8 @@ function ptDate(s) {
   if(!s) return null;
   var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+  var mAno2 = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(mAno2) return new Date(2000+(+mAno2[3]),+mAno2[2]-1,+mAno2[1]);
   var m2 = String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m2) return new Date(+m2[1],+m2[2]-1,+m2[3]);
   return null;
