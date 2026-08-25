@@ -130,15 +130,26 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
 
     <!-- VISÃO GERAL -->
     <div id="sec-visao" class="sec on">
+      <div class="filters" style="margin-bottom:16px">
+        <div>
+          <label>Período</label>
+          <select id="vis-periodo" onchange="renderVisao()">
+            <option value="dia">Hoje</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes" selected>Este mês</option>
+            <option value="ano">Este ano</option>
+          </select>
+        </div>
+      </div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-label">Litros este mês</div><div class="kpi-val" id="kv-litros">—</div><div class="kpi-sub" id="ks-litros">—</div><span class="kpi-icon">⛽</span><div class="kpi-bar" id="kb-litros" style="width:0"></div></div>
-        <div class="kpi grn"><div class="kpi-label">Custo este mês</div><div class="kpi-val" id="kv-custo">—</div><div class="kpi-sub" id="ks-custo">—</div><span class="kpi-icon">💰</span><div class="kpi-bar" id="kb-custo" style="width:0"></div></div>
-        <div class="kpi blu"><div class="kpi-label">Custo por km</div><div class="kpi-val" id="kv-custkm">—</div><div class="kpi-sub" id="ks-custkm">mês atual</div><span class="kpi-icon">📏</span><div class="kpi-bar" id="kb-custkm" style="width:0"></div></div>
-        <div class="kpi red"><div class="kpi-label">Preço médio/L</div><div class="kpi-val" id="kv-preco">—</div><div class="kpi-sub" id="ks-preco">mês atual</div><span class="kpi-icon">📈</span><div class="kpi-bar" id="kb-preco" style="width:0"></div></div>
+        <div class="kpi"><div class="kpi-label">Litros <span id="lbl-periodo-1">no mês</span></div><div class="kpi-val" id="kv-litros">—</div><div class="kpi-sub" id="ks-litros">—</div><span class="kpi-icon">⛽</span><div class="kpi-bar" id="kb-litros" style="width:0"></div></div>
+        <div class="kpi grn"><div class="kpi-label">Custo <span id="lbl-periodo-2">no mês</span></div><div class="kpi-val" id="kv-custo">—</div><div class="kpi-sub" id="ks-custo">—</div><span class="kpi-icon">💰</span><div class="kpi-bar" id="kb-custo" style="width:0"></div></div>
+        <div class="kpi blu"><div class="kpi-label">Custo por km</div><div class="kpi-val" id="kv-custkm">—</div><div class="kpi-sub" id="ks-custkm">período atual</div><span class="kpi-icon">📏</span><div class="kpi-bar" id="kb-custkm" style="width:0"></div></div>
+        <div class="kpi red"><div class="kpi-label">Preço médio/L</div><div class="kpi-val" id="kv-preco">—</div><div class="kpi-sub" id="ks-preco">período atual</div><span class="kpi-icon">📈</span><div class="kpi-bar" id="kb-preco" style="width:0"></div></div>
       </div>
       <div class="grid2">
         <div class="card"><div class="card-title">📅 Consumo diário — 30 dias</div><canvas id="chart-diario" height="180"></canvas></div>
-        <div class="card"><div class="card-title">🏭 Top postos — mês atual</div><canvas id="chart-postos" height="180"></canvas></div>
+        <div class="card"><div class="card-title">🏭 Top postos — <span id="lbl-periodo-3">este mês</span></div><canvas id="chart-postos" height="180"></canvas></div>
       </div>
       <div class="card">
         <div class="card-title">🕐 Últimos abastecimentos</div>
@@ -481,18 +492,47 @@ function populateSelects() {
 }
 
 // ── VISÃO GERAL ───────────────────────────────────────────────
+function calcularIntervaloPeriodo(periodo, hoje) {
+  var ini, fim, labelCurto, labelChart;
+  if (periodo === 'dia') {
+    ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+    labelCurto = 'hoje'; labelChart = 'hoje';
+  } else if (periodo === 'semana') {
+    var diaSemana = hoje.getDay(); // 0=domingo
+    ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-diaSemana);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-diaSemana+6, 23, 59, 59);
+    labelCurto = 'na semana'; labelChart = 'esta semana';
+  } else if (periodo === 'ano') {
+    ini = new Date(hoje.getFullYear(), 0, 1);
+    fim = new Date(hoje.getFullYear(), 11, 31, 23, 59, 59);
+    labelCurto = 'no ano'; labelChart = 'este ano';
+  } else { // mes (padrao)
+    ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0, 23, 59, 59);
+    labelCurto = 'no mês'; labelChart = 'este mês';
+  }
+  return { ini:ini, fim:fim, labelCurto:labelCurto, labelChart:labelChart };
+}
+
 function renderVisao() {
   var hoje = new Date();
-  var mesIni = new Date(hoje.getFullYear(),hoje.getMonth(),1);
-  var mesFim = new Date(hoje.getFullYear(),hoje.getMonth()+1,0);
-  var mes = DADOS.filter(function(d){ var dt=ptDate(d.data); return dt&&dt>=mesIni&&dt<=mesFim; });
+  var periodo = document.getElementById('vis-periodo').value;
+  var intervalo = calcularIntervaloPeriodo(periodo, hoje);
+  var ini = intervalo.ini, fim = intervalo.fim;
+
+  document.getElementById('lbl-periodo-1').textContent = intervalo.labelCurto;
+  document.getElementById('lbl-periodo-2').textContent = intervalo.labelCurto;
+  document.getElementById('lbl-periodo-3').textContent = intervalo.labelChart;
+
+  var mes = DADOS.filter(function(d){ var dt=ptDate(d.data); return dt&&dt>=ini&&dt<=fim; });
   var totL = mes.reduce(function(a,d){return a+Number(d.litros||0);},0);
   var totV = mes.reduce(function(a,d){return a+Number(d.valor||0);},0);
   var preco = totL>0?totV/totL:0;
 
-  // KM do mês — viagens fechadas (conta pela data de fechamento/retorno)
+  // KM do periodo — viagens fechadas (conta pela data de fechamento/retorno)
   var viagens = calcViagens(DADOS);
-  var vMes = viagens.filter(function(v){ var dt=ptDate(v.dataFim); return dt&&dt>=mesIni&&dt<=mesFim; });
+  var vMes = viagens.filter(function(v){ var dt=ptDate(v.dataFim); return dt&&dt>=ini&&dt<=fim; });
   var totKm = vMes.reduce(function(a,v){return a+v.km;},0);
   var custKm = totKm>0?totV/totKm:0;
 
@@ -505,9 +545,13 @@ function renderVisao() {
   document.getElementById('kv-preco').textContent  = preco>0?'R$ '+brn(preco,3):'—';
   document.getElementById('ks-preco').textContent  = 'por litro';
 
+  // Teto de referencia das barras varia conforme o periodo (dia/semana tem escala bem menor que mes/ano)
+  var escala = { dia: {l:2000, v:15000}, semana: {l:12000, v:90000}, mes: {l:50000, v:400000}, ano: {l:500000, v:4000000} };
+  var teto = escala[periodo] || escala.mes;
+
   setTimeout(function(){
-    document.getElementById('kb-litros').style.width = Math.min(totL/50000*85,85)+'%';
-    document.getElementById('kb-custo').style.width  = Math.min(totV/500000*85,85)+'%';
+    document.getElementById('kb-litros').style.width = Math.min(totL/teto.l*85,85)+'%';
+    document.getElementById('kb-custo').style.width  = Math.min(totV/teto.v*85,85)+'%';
     document.getElementById('kb-custkm').style.width = Math.min(custKm/3*85,85)+'%';
     document.getElementById('kb-preco').style.width  = Math.min(preco/10*85,85)+'%';
   },100);
