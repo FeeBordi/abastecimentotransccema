@@ -264,10 +264,11 @@ function inPer(d,dias) { var dt=ptDate(d);if(!dt)return false;if(!dias)return tr
 
 // Normalização de postos no frontend
 var NOMES = {
-  'REDE HG':'POSTO CHEROKEE','HG COMBUSTIVEIS':'POSTO CHEROKEE',
+  'REDE HG':'POSTO CHEROKEE','HG COMBUSTIVEIS':'POSTO CHEROKEE','CHEROKEE':'POSTO CHEROKEE',
   'REFORCO 4':'POSTO REFORCO 4','REFORÇO 4':'POSTO REFORCO 4',
-  'LAMPIAO':'POSTO LAMPIAO','LAMPIÃO':'POSTO LAMPIAO',
+  'LAMPIAO':'POSTO LAMPIAO','LAMPIÃO':'POSTO LAMPIAO','SOUZA E SOUZA':'POSTO LAMPIAO',
   'CONEXAO RIO':'CTA Conexao Rio','CONEXÃO RIO':'CTA Conexao Rio',
+  'COTEGY':'COTEGY','RANCHO DO VALE':'COTEGY',
 };
 function normPosto(nome) {
   if(!nome||nome==='—') return nome||'—';
