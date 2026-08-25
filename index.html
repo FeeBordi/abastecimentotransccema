@@ -133,12 +133,33 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
       <div class="filters" style="margin-bottom:16px">
         <div>
           <label>Período</label>
-          <select id="vis-periodo" onchange="renderVisao()">
+          <select id="vis-periodo" onchange="atualizarFiltrosVisao()">
             <option value="dia">Hoje</option>
             <option value="semana">Esta semana</option>
-            <option value="mes" selected>Este mês</option>
-            <option value="ano">Este ano</option>
+            <option value="mes" selected>Mês</option>
+            <option value="ano">Ano</option>
           </select>
+        </div>
+        <div id="vis-mes-wrap">
+          <label>Mês</label>
+          <select id="vis-mes" onchange="renderVisao()">
+            <option value="0">Janeiro</option>
+            <option value="1">Fevereiro</option>
+            <option value="2">Março</option>
+            <option value="3">Abril</option>
+            <option value="4">Maio</option>
+            <option value="5">Junho</option>
+            <option value="6">Julho</option>
+            <option value="7">Agosto</option>
+            <option value="8">Setembro</option>
+            <option value="9">Outubro</option>
+            <option value="10">Novembro</option>
+            <option value="11">Dezembro</option>
+          </select>
+        </div>
+        <div id="vis-ano-wrap">
+          <label>Ano</label>
+          <select id="vis-ano" onchange="renderVisao()"></select>
         </div>
       </div>
       <div class="kpi-grid">
@@ -246,6 +267,9 @@ window.addEventListener('DOMContentLoaded', function() {
   ini.setDate(ini.getDate()-30);
   document.getElementById('rpt-ini').value = ini.toISOString().slice(0,10);
   document.getElementById('rpt-fim').value = hoje.toISOString().slice(0,10);
+  document.getElementById('vis-mes').value = hoje.getMonth();
+  document.getElementById('vis-mes-wrap').style.display = '';
+  document.getElementById('vis-ano-wrap').style.display = '';
   renderAll();
   sincronizar();
 });
@@ -478,6 +502,7 @@ async function enviarFila() {
 // ── RENDER ALL ────────────────────────────────────────────────
 function renderAll() {
   populateSelects();
+  popularAnosVisao();
   renderVisao();
   document.getElementById('sb-total').textContent = DADOS.length.toLocaleString('pt-BR');
 }
@@ -492,8 +517,31 @@ function populateSelects() {
 }
 
 // ── VISÃO GERAL ───────────────────────────────────────────────
+function atualizarFiltrosVisao() {
+  var periodo = document.getElementById('vis-periodo').value;
+  document.getElementById('vis-mes-wrap').style.display = (periodo === 'mes') ? '' : 'none';
+  document.getElementById('vis-ano-wrap').style.display = (periodo === 'mes' || periodo === 'ano') ? '' : 'none';
+  renderVisao();
+}
+
+function popularAnosVisao() {
+  var sel = document.getElementById('vis-ano');
+  var anos = new Set();
+  DADOS.forEach(function(d){ var dt=ptDate(d.data); if(dt) anos.add(dt.getFullYear()); });
+  var hoje = new Date();
+  anos.add(hoje.getFullYear());
+  var lista = [...anos].sort(function(a,b){return b-a;});
+  var atual = sel.value;
+  sel.innerHTML = lista.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
+  sel.value = atual && lista.includes(parseInt(atual)) ? atual : hoje.getFullYear();
+}
+
 function calcularIntervaloPeriodo(periodo, hoje) {
   var ini, fim, labelCurto, labelChart;
+  var anoSel = parseInt(document.getElementById('vis-ano').value) || hoje.getFullYear();
+  var mesSel = parseInt(document.getElementById('vis-mes').value);
+  if (isNaN(mesSel)) mesSel = hoje.getMonth();
+
   if (periodo === 'dia') {
     ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
@@ -504,13 +552,14 @@ function calcularIntervaloPeriodo(periodo, hoje) {
     fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-diaSemana+6, 23, 59, 59);
     labelCurto = 'na semana'; labelChart = 'esta semana';
   } else if (periodo === 'ano') {
-    ini = new Date(hoje.getFullYear(), 0, 1);
-    fim = new Date(hoje.getFullYear(), 11, 31, 23, 59, 59);
-    labelCurto = 'no ano'; labelChart = 'este ano';
-  } else { // mes (padrao)
-    ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    fim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0, 23, 59, 59);
-    labelCurto = 'no mês'; labelChart = 'este mês';
+    ini = new Date(anoSel, 0, 1);
+    fim = new Date(anoSel, 11, 31, 23, 59, 59);
+    labelCurto = 'em '+anoSel; labelChart = anoSel;
+  } else { // mes — usa o mes/ano escolhidos, nao necessariamente o atual
+    var nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    ini = new Date(anoSel, mesSel, 1);
+    fim = new Date(anoSel, mesSel+1, 0, 23, 59, 59);
+    labelCurto = 'em '+nomesMes[mesSel]; labelChart = nomesMes[mesSel]+'/'+anoSel;
   }
   return { ini:ini, fim:fim, labelCurto:labelCurto, labelChart:labelChart };
 }
