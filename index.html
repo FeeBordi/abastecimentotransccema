@@ -417,6 +417,7 @@ function renderFila() {
     var statusBadge = '';
     if (item.status === 'enviando') statusBadge = '<span class="badge" style="background:var(--bll);color:var(--blu)">Enviando...</span>';
     if (item.status === 'ok')       statusBadge = '<span class="badge badge-cta">✅ Salvo</span>';
+    if (item.status === 'aviso')    statusBadge = '<span class="badge" style="background:var(--accl);color:var(--acc)">⚠️ Salvo com aviso</span>';
     if (item.status === 'dup')      statusBadge = '<span class="badge" style="background:var(--accl);color:var(--acc)">⚠️ Duplicado</span>';
     if (item.status === 'erro')     statusBadge = '<span class="badge" style="background:var(--rdl);color:var(--red)">❌ Erro</span>';
 
@@ -466,6 +467,10 @@ async function enviarFila() {
       if (data.ok && data.novas > 0) {
         item.status = 'ok';
         item.msg = (data.placaLida||'') + ' salvo';
+        if (data.avisosKm && data.avisosKm.length > 0) {
+          item.status = 'aviso';
+          item.msg = '⚠️ ' + data.avisosKm[0].motivo;
+        }
         okCount++;
       } else if (data.ok && data.dups > 0) {
         item.status = 'dup';
