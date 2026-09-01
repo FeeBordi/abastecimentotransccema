@@ -249,6 +249,51 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
   </div>
 </div>
 </div>
+<div id="edit-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(15,29,46,.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px)">
+  <div style="background:var(--surf);border-radius:14px;padding:26px;width:420px;max-width:90vw;box-shadow:var(--sh2)">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">✏️ Editar abastecimento</div>
+    <input type="hidden" id="edit-chave">
+    <div style="display:grid;gap:10px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Placa</label>
+        <input type="text" id="edit-placa" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;text-transform:uppercase;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Posto</label>
+        <input type="text" id="edit-posto" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Data (DD/MM/AAAA)</label>
+          <input type="text" id="edit-data" placeholder="15/08/2026" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">NF</label>
+          <input type="text" id="edit-nf" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Litros</label>
+          <input type="number" step="0.01" id="edit-litros" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Valor (R$)</label>
+          <input type="number" step="0.01" id="edit-valor" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Odômetro (km) — deixe vazio se não souber</label>
+        <input type="number" id="edit-km" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn btn-g" onclick="fecharEdicao()">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -361,6 +406,56 @@ function excluirRegistro(chave) {
         if (document.getElementById('sec-viagens').classList.contains('on')) renderViagens();
       } else {
         toast(data.msg || 'Erro ao excluir', 'err');
+      }
+    })
+    .catch(function(e){ toast('Erro: ' + e.message, 'err'); });
+}
+
+// ── EDITAR REGISTRO ───────────────────────────────────────────
+function abrirEdicao(chave) {
+  var d = DADOS.find(function(x){ return x.chave === chave; });
+  if (!d) { toast('Registro não encontrado', 'err'); return; }
+  document.getElementById('edit-chave').value  = d.chave;
+  document.getElementById('edit-placa').value  = d.placa || '';
+  document.getElementById('edit-posto').value  = d.posto || '';
+  document.getElementById('edit-data').value   = fmtDate(d.data) || '';
+  document.getElementById('edit-nf').value     = d.nf || '';
+  document.getElementById('edit-litros').value = d.litros || '';
+  document.getElementById('edit-valor').value  = d.valor || '';
+  document.getElementById('edit-km').value     = d.km_odo ? String(d.km_odo).replace(/[^0-9]/g,'') : '';
+  document.getElementById('edit-modal-bg').style.display = 'flex';
+}
+
+function fecharEdicao() {
+  document.getElementById('edit-modal-bg').style.display = 'none';
+}
+
+function salvarEdicao() {
+  var chave = document.getElementById('edit-chave').value;
+  var campos = {
+    placa:  document.getElementById('edit-placa').value.trim(),
+    posto:  document.getElementById('edit-posto').value.trim(),
+    data:   document.getElementById('edit-data').value.trim(),
+    nf:     document.getElementById('edit-nf').value.trim(),
+    litros: parseFloat(document.getElementById('edit-litros').value) || 0,
+    valor:  parseFloat(document.getElementById('edit-valor').value) || 0,
+    km_odo: document.getElementById('edit-km').value.trim(),
+  };
+
+  if (!campos.placa || campos.litros <= 0) {
+    toast('Preencha placa e litros corretamente', 'err');
+    return;
+  }
+
+  fetch(APPS_URL, { method: 'POST', body: JSON.stringify({ acao: 'editar', chave: chave, campos: campos }) })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        toast('Editado com sucesso', 'ok');
+        fecharEdicao();
+        sincronizar();
+      } else {
+        toast(data.msg || 'Erro ao editar', 'err');
       }
     })
     .catch(function(e){ toast('Erro: ' + e.message, 'err'); });
@@ -626,7 +721,8 @@ function renderVisao() {
       +'<td class="mono">'+(pl>0?'R$ '+brn(pl,3):'—')+'</td>'
       +'<td><span class="badge '+tbadge+'">'+tipo+'</span></td>'
       +'<td><span class="badge '+obadge+'">'+orig+'</span></td>'
-      +'<td><button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
+      +'<td style="white-space:nowrap"><button onclick="abrirEdicao(\''+d.chave+'\')" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">✏️</button>'
+      +'<button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
   }).join('')||'<tr><td colspan="9" class="empty">Nenhum registro</td></tr>';
 
   renderChartDiario();
@@ -834,7 +930,8 @@ function renderPlaca() {
         +'<td class="mono">'+(km>0?brn(km,0):'—')+'</td>'
         +'<td><span class="badge '+(d.tipo==='base'?'badge-base':'badge-ext')+'">'+(d.tipo==='base'?'Base':'Externo')+'</span></td>'
         +'<td><span class="badge '+ob+'">'+or+'</span></td>'
-        +'<td><button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
+        +'<td style="white-space:nowrap"><button onclick="abrirEdicao(\''+d.chave+'\')" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">✏️</button>'
+        +'<button onclick="excluirRegistro(\''+d.chave+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button></td></tr>';
     }).join('')+'</tbody>'
     +'<tfoot><tr style="background:var(--accl)"><td colspan="2"><strong>Total</strong></td>'
     +'<td class="mono"><strong>'+brn(totL,2)+' L</strong></td>'
