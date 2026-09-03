@@ -204,6 +204,53 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--s2)}
 
         <div id="add-status" style="margin-top:14px"></div>
       </div>
+
+      <!-- CADASTRO MANUAL — nao depende de foto nem do Gemini -->
+      <div class="card" style="max-width:560px;margin-top:18px">
+        <div class="card-title">✍️ Cadastrar manualmente (sem foto)</div>
+        <p style="font-size:12.5px;color:var(--tx2);margin-bottom:14px">
+          Use quando a leitura da foto falhar ou quando não tiver foto. Digita os dados
+          direto do cupom — o sistema confere duplicata e sequência de km do mesmo jeito.
+        </p>
+        <div style="display:grid;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Placa *</label>
+              <input type="text" id="man-placa" placeholder="UDR9J75" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;text-transform:uppercase;font-family:inherit">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Data (DD/MM/AAAA) *</label>
+              <input type="text" id="man-data" placeholder="30/08/2026" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Posto *</label>
+            <input type="text" id="man-posto" placeholder="Posto Reforço 4" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Litros *</label>
+              <input type="number" step="0.01" id="man-litros" placeholder="500" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Valor (R$)</label>
+              <input type="number" step="0.01" id="man-valor" placeholder="3280.00" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">Km (odômetro)</label>
+              <input type="number" id="man-km" placeholder="145900" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">NF (número, opcional)</label>
+            <input type="text" id="man-nf" placeholder="58790" style="width:100%;padding:8px 10px;border:1px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit">
+          </div>
+        </div>
+        <button class="btn btn-p" style="width:100%;justify-content:center;padding:11px;margin-top:14px" id="man-btn" onclick="salvarManual()">
+          Salvar abastecimento
+        </button>
+        <div id="man-status" style="margin-top:12px"></div>
+      </div>
     </div>
 
     <!-- VIAGENS -->
@@ -461,6 +508,71 @@ function salvarEdicao() {
     .catch(function(e){ toast('Erro: ' + e.message, 'err'); });
 }
 
+// ── CADASTRO MANUAL (sem foto, sem Gemini) ────────────────────
+function salvarManual() {
+  var placa  = document.getElementById('man-placa').value.trim().toUpperCase().replace(/[\s\-\.]/g,'');
+  var data   = document.getElementById('man-data').value.trim();
+  var posto  = document.getElementById('man-posto').value.trim();
+  var litros = parseFloat(document.getElementById('man-litros').value) || 0;
+  var valor  = parseFloat(document.getElementById('man-valor').value) || 0;
+  var km     = document.getElementById('man-km').value.trim();
+  var nf     = document.getElementById('man-nf').value.trim().replace(/\D/g,'');
+  var status = document.getElementById('man-status');
+  var btn    = document.getElementById('man-btn');
+
+  if (!placa || !data || !posto || litros <= 0) {
+    status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">❌ Preencha placa, data, posto e litros.</div>';
+    return;
+  }
+  if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(data)) {
+    status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">❌ Data no formato DD/MM/AAAA.</div>';
+    return;
+  }
+
+  var agora = new Date();
+  var chave = nf.length >= 5
+    ? 'MAN-'+placa+'-'+data.replace(/\//g,'')+'-NF'+nf
+    : 'MAN-'+placa+'-'+data.replace(/\//g,'')+'-'+Date.now();
+
+  var nota = {
+    chave: chave, placa: placa, posto: posto, nf: nf, data: data,
+    hora: String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0'),
+    litros: Math.round(litros*100)/100,
+    valor:  Math.round(valor*100)/100,
+    km_odo: km,
+    motorista: '',
+    origem: 'manual',
+  };
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Salvando...';
+  status.innerHTML = '';
+
+  fetch(APPS_URL, { method: 'POST', body: JSON.stringify([nota]) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok && d.novas > 0) {
+        var aviso = (d.avisosKm && d.avisosKm.length) ? '<br><span style="font-weight:500">⚠️ '+d.avisosKm[0].motivo+'</span>' : '';
+        status.innerHTML = '<div style="background:var(--gnl);color:var(--grn);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">✅ '+placa+' salvo!'+aviso+'</div>';
+        toast('Salvo', 'ok');
+        ['man-placa','man-data','man-posto','man-litros','man-valor','man-km','man-nf'].forEach(function(id){ document.getElementById(id).value=''; });
+        sincronizar();
+      } else if (d.ok && d.dups > 0) {
+        var dup = d.duplicados && d.duplicados[0];
+        status.innerHTML = '<div style="background:var(--accl);color:var(--acc);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">⚠️ Já existe: '+(dup ? dup.litros+'L em '+dup.data : 'este abastecimento')+'. Não foi duplicado.</div>';
+      } else {
+        status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">❌ '+(d.msg||d.erro||'Erro ao salvar')+'</div>';
+      }
+    })
+    .catch(function(e){
+      status.innerHTML = '<div style="background:var(--rdl);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600">❌ Erro: '+e.message+'</div>';
+    })
+    .finally(function(){
+      btn.disabled = false;
+      btn.innerHTML = 'Salvar abastecimento';
+    });
+}
+
 // ── ADICIONAR NOTA POR FOTO (varias de uma vez) ──────────────
 var addFila = []; // [{id, file, base64, mime, placa, status, msg}]
 
@@ -710,7 +822,7 @@ function renderVisao() {
   document.getElementById('tb-ultimos').innerHTML = ult.map(function(d){
     var l=Number(d.litros||0),v=Number(d.valor||0),pl=l>0&&v>0?v/l:0;
     var obadge=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':d.origem==='web'?'badge-base':'badge-wpp';
-    var orig=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':'WPP';
+    var orig=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':d.origem==='manual'?'Manual':'WPP';
     var tbadge=d.tipo==='base'?'badge-base':'badge-ext';
     var tipo=d.tipo==='base'?'Base':'Externo';
     return '<tr><td class="mono">'+fmtDate(d.data)+'</td>'
@@ -923,7 +1035,7 @@ function renderPlaca() {
       var l=Number(d.litros||0),v=Number(d.valor||0),pl2=l>0&&v>0?v/l:0;
       var km=d.km_odo?parseInt(String(d.km_odo).replace(/[^0-9]/g,'')):0;
       var ob=d.origem==='xml'?'badge-xml':d.origem==='cta'?'badge-cta':d.origem==='web'?'badge-base':'badge-wpp';
-      var or=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':'WPP';
+      var or=d.origem==='xml'?'NF-e':d.origem==='cta'?'CTA':d.origem==='web'?'Web':d.origem==='manual'?'Manual':'WPP';
       return '<tr><td class="mono">'+fmtDate(d.data)+'</td><td>'+(d.posto||'—')+'</td>'
         +'<td class="mono">'+brn(l,2)+' L</td><td class="mono">'+brl(v)+'</td>'
         +'<td class="mono">'+(pl2>0?'R$ '+brn(pl2,3):'—')+'</td>'
