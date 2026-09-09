@@ -417,6 +417,27 @@ function go(sec,el) {
 }
 
 // ── SYNC ──────────────────────────────────────────────────────
+// Salva o cache local com seguranca — se nao couber no localStorage
+// (planilha grande demais), tenta so os registros mais recentes antes
+// de desistir. Nunca deixa isso travar o resto do app: os dados ja
+// estao em DADOS (memoria) e funcionam normalmente mesmo sem cache.
+function salvarCache(lista) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(lista));
+    return;
+  } catch (e) {
+    // Nao coube tudo — tenta só os ultimos 12 meses
+  }
+  try {
+    var limite = new Date(); limite.setFullYear(limite.getFullYear() - 1);
+    var recentes = lista.filter(function(d) { var dt = ptDate(d.data); return !dt || dt >= limite; });
+    localStorage.setItem(CACHE_KEY, JSON.stringify(recentes));
+  } catch (e2) {
+    // Ainda nao coube — funciona sem cache local, sem travar a sincronizacao
+    try { localStorage.removeItem(CACHE_KEY); } catch (e3) {}
+  }
+}
+
 function sincronizar() {
   var btn = document.getElementById('sync-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Sincronizando...';
@@ -427,7 +448,7 @@ function sincronizar() {
       var lista = Array.isArray(data) ? data : (data.abastecimentos||data||[]);
       // Normalizar postos
       lista = lista.map(function(r){ return Object.assign({},r,{posto:normPosto(r.posto)}); });
-      localStorage.setItem(CACHE_KEY,JSON.stringify(lista));
+      salvarCache(lista);
       DADOS = lista;
       var agora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       document.getElementById('last-sync').textContent = 'Sync: '+agora;
@@ -447,7 +468,7 @@ function excluirRegistro(chave) {
       if (data.ok) {
         toast('Excluído', 'ok');
         DADOS = DADOS.filter(function(d){ return d.chave !== chave; });
-        localStorage.setItem(CACHE_KEY, JSON.stringify(DADOS));
+        salvarCache(DADOS);
         renderAll();
         if (document.getElementById('sec-placa').classList.contains('on')) renderPlaca();
         if (document.getElementById('sec-viagens').classList.contains('on')) renderViagens();
